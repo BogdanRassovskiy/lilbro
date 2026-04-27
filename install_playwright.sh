@@ -11,11 +11,12 @@ if [[ -f .venv/bin/activate ]]; then
   source .venv/bin/activate
 fi
 
-echo "→ python -m playwright install chromium"
-echo "(нужен полный Chromium, не ставьте только headless-shell: без флага --only-shell)"
-python3 -m playwright install chromium
+echo "→ python -m playwright install chromium firefox"
+echo "(полный Chromium без --only-shell; Firefox — запасной движок если Chromium на VPS падает)"
+python3 -m playwright install chromium firefox
 
 echo ""
-echo "Готово. Если при запуске поиска Chromium падает с ошибкой про .so / библиотеки, на сервере (один раз, под root):"
+echo "Готово. Если браузер падает из‑за библиотек (.so), на сервере (один раз, под root):"
 echo "  sudo \"\$(which python3)\" -m playwright install-deps chromium"
+echo "  sudo \"\$(which python3)\" -m playwright install-deps firefox"
 echo "(или активируйте venv и подставьте путь к python из .venv)"

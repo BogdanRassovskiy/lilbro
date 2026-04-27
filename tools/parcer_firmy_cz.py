@@ -3,7 +3,7 @@ import re
 import time
 from urllib.parse import parse_qsl, quote_plus, urlencode, urljoin, urlparse, urlunparse
 
-from .playwright_chromium import chromium_launch_kwargs
+from .playwright_browser import sync_launch_browser
 
 # Критерии поиска на Firmy.cz (потребительский интерфейс, см. https://www.firmy.cz ):
 # — полнотекстовый запрос (q): название, вид деятельности, локация и т.д.;
@@ -209,9 +209,9 @@ def fetch_listings(query: str, limit: int):
         from playwright.sync_api import sync_playwright
     except ImportError as e:
         raise RuntimeError(
-            "Нужен пакет playwright и бинарники браузера. Установите: pip install playwright && "
-            "python -m playwright install chromium (на сервере Linux при ошибках библиотек: "
-            "sudo python -m playwright install-deps chromium)"
+            "Нужен пакет playwright и бинарники браузеров. Установите: pip install playwright && "
+            "python -m playwright install chromium firefox; на Linux при ошибках библиотек: "
+            "sudo python -m playwright install-deps chromium && sudo python -m playwright install-deps firefox"
         ) from e
 
     if limit < 1:
@@ -225,7 +225,7 @@ def fetch_listings(query: str, limit: int):
     listings = []
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(**chromium_launch_kwargs())
+        browser, _engine = sync_launch_browser(p)
         page = browser.new_page()
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=90000)

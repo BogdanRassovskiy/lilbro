@@ -6,7 +6,7 @@ from typing import Iterable, List, Optional
 import re
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
-from .playwright_chromium import chromium_launch_kwargs
+from .playwright_browser import sync_launch_browser
 
 
 @dataclass(frozen=True)
@@ -671,7 +671,7 @@ def _fetch_rendered_html_with_playwright(url: str) -> str:
     )
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(**chromium_launch_kwargs())
+        browser, _engine = sync_launch_browser(p)
         page = browser.new_page()
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=90000)
