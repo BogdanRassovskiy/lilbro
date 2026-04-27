@@ -1,0 +1,364 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>lilbro</title>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --surface: #1a1f2a;
+      --border: #2a3344;
+      --text: #e8ecf3;
+      --muted: #8b95a8;
+      --accent: #5b8def;
+      --accent-dim: #3d6bc4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(ellipse 80% 60% at 50% -20%, #1e2a44 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+
+    .corner-btn {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      z-index: 10;
+      padding: 0.55rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .corner-btn:hover {
+      border-color: var(--accent);
+      background: #222836;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 4rem 1.5rem 2rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 32rem;
+      padding: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      margin: 0 0 1.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--muted);
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .search-wrap {
+      margin-bottom: 1.75rem;
+    }
+
+    .search-wrap input[type="search"] {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .search-wrap input[type="search"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.2);
+    }
+
+    .search-wrap input[type="search"]::placeholder {
+      color: #5c6678;
+    }
+
+    .scale-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.65rem;
+    }
+
+    .scale-value {
+      font-variant-numeric: tabular-nums;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: linear-gradient(
+        to right,
+        var(--accent-dim) 0%,
+        var(--accent-dim) var(--fill, 0%),
+        var(--border) var(--fill, 0%),
+        var(--border) 100%
+      );
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--text);
+      border: 2px solid var(--accent);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--text);
+      border: 2px solid var(--accent);
+      cursor: pointer;
+    }
+
+    .ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.35rem;
+      padding: 0 2px;
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .submit-row {
+      margin-top: 1.75rem;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dim) 100%);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+    }
+
+    button[type="submit"][disabled] {
+      cursor: not-allowed;
+      filter: grayscale(20%) brightness(0.9);
+      opacity: 0.9;
+    }
+
+    button[type="submit"]:hover {
+      filter: brightness(1.08);
+    }
+
+    button[type="submit"]:active {
+      transform: scale(0.99);
+    }
+
+    .progress {
+      display: none;
+      margin-top: 0.85rem;
+    }
+
+    .progress[aria-hidden="false"] {
+      display: block;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin: 0 0 0.45rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .progress-track {
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 45%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent 0%, rgba(91, 141, 239, 0.9) 35%, rgba(91, 141, 239, 0.35) 70%, transparent 100%);
+      animation: progress-slide 1.05s ease-in-out infinite;
+      transform: translateX(-120%);
+    }
+
+    @keyframes progress-slide {
+      0% { transform: translateX(-120%); }
+      50% { transform: translateX(70%); }
+      100% { transform: translateX(220%); }
+    }
+
+    .firmy-hint {
+      margin: 0 0 1.25rem;
+      padding: 0.85rem 1rem;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .firmy-hint a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <a class="corner-btn" href="/" data-i18n="home.base">база</a>
+  <div style="position:fixed; top:1.25rem; left:1.25rem; z-index:11; display:flex; gap:0.35rem; align-items:center; background:#1a1f2a; border:1px solid #2a3344; border-radius:8px; padding:0.3rem 0.45rem;">
+    <span style="font-size:0.78rem;color:#8b95a8;" data-i18n="lang.label">Язык</span>
+    <select data-lang-switch style="background:#0f1218;color:#e8ecf3;border:1px solid #2a3344;border-radius:6px;padding:0.15rem 0.3rem;font-size:0.78rem;">
+      <option value="ru" data-i18n="lang.ru">Русский</option>
+      <option value="cs" data-i18n="lang.cs">Čeština</option>
+    </select>
+  </div>
+
+  <main>
+    <div class="card">
+      <h1 data-i18n="home.search">Поиск</h1>
+      <p class="firmy-hint">
+        На <a href="https://www.firmy.cz" rel="noopener noreferrer" target="_blank">Firmy.cz</a>
+        обычно ищут по свободному тексту (название, сфера, город и т.д.), можно уточнять локацию,
+        фильтры по категориям и режим «открыто сейчас», работать с картой.
+        Отдельного поля «только по дате добавления» в базовом поиске нет; ленту новых и изменённых
+        профилей ведёт <a href="https://www.firmy.cz/rss.xml" rel="noopener noreferrer" target="_blank">RSS</a>.
+      </p>
+      {% if messages %}
+      <ul class="messages" style="margin:0 0 1rem;padding-left:1.2rem;color:var(--muted);font-size:0.9rem;">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <form id="search-form" method="post" action="{% url 'firmy:run_search' %}">
+        {% csrf_token %}
+        <div class="search-wrap">
+          <label for="q" data-i18n="home.query">Запрос</label>
+          <input id="q" name="q" type="search" placeholder="Введите запрос…" data-i18n-placeholder="home.queryPlaceholder" autocomplete="off">
+        </div>
+
+        <div>
+          <div class="scale-header">
+            <label for="expected" data-i18n="home.expected">Ожидаемое число результатов</label>
+            <span class="scale-value" id="expected-label">10</span>
+          </div>
+          <input
+            id="expected"
+            name="expected"
+            type="range"
+            min="1"
+            max="20"
+            value="10"
+            aria-valuemin="1"
+            aria-valuemax="20"
+            aria-valuenow="10"
+            aria-labelledby="expected-label"
+          >
+          <div class="ticks" aria-hidden="true">
+            <span>1</span><span>5</span><span>10</span><span>15</span><span>20</span>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button id="search-submit" type="submit" data-i18n="home.submit">Искать</button>
+          <div id="search-progress" class="progress" aria-hidden="true" role="status" aria-live="polite">
+            <div class="progress-label">
+              <span data-i18n="home.loading">Загрузка…</span>
+              <span style="font-variant-numeric: tabular-nums;" data-i18n="home.loadingHint">это может занять до ~30–60с</span>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <div class="progress-bar"></div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var range = document.getElementById("expected");
+      var label = document.getElementById("expected-label");
+      function sync() {
+        var v = range.value;
+        label.textContent = v;
+        range.setAttribute("aria-valuenow", v);
+        var pct = ((v - 1) / 19) * 100;
+        range.style.setProperty("--fill", pct + "%");
+      }
+      range.addEventListener("input", sync);
+      sync();
+    })();
+
+    (function () {
+      var form = document.getElementById("search-form");
+      var btn = document.getElementById("search-submit");
+      var progress = document.getElementById("search-progress");
+
+      if (!form || !btn || !progress) return;
+
+      form.addEventListener("submit", function () {
+        btn.disabled = true;
+        btn.textContent = (window.I18N && window.I18N.t("home.submitting", "Ищем…")) || "Ищем…";
+        progress.setAttribute("aria-hidden", "false");
+      });
+    })();
+  </script>
+  <script src="{% static 'firmy/js/i18n.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Результаты — {{ run.query }}</title>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --surface: #1a1f2a;
+      --border: #2a3344;
+      --text: #e8ecf3;
+      --muted: #8b95a8;
+      --accent: #5b8def;
+      --err: #e06c6c;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.5rem;
+    }
+    a { color: var(--accent); }
+    .meta {
+      max-width: 56rem;
+      margin: 0 auto 1.25rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .meta.error { border-color: var(--err); }
+    table {
+      width: 100%;
+      max-width: 56rem;
+      margin: 0 auto;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 0.65rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tr:last-child td { border-bottom: none; }
+    .back { display: inline-block; margin-bottom: 1rem; }
+    .multiline { white-space: pre-line; max-width: 14rem; word-break: break-word; font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/">← На главную</a>
+
+  <div class="meta {% if run.status == 'error' %}error{% endif %}">
+    <strong>Запрос:</strong> {{ run.query }}<br>
+    <strong>Лимит:</strong> до {{ run.expected_limit }} ·
+    <strong>Статус:</strong> {{ run.get_status_display }}<br>
+    <strong>URL на firmy.cz:</strong> <a href="{{ run.search_url }}" rel="noopener noreferrer" target="_blank">{{ run.search_url }}</a><br>
+    {% if run.error_message %}
+      <strong>Ошибка:</strong> {{ run.error_message }}
+    {% endif %}
+  </div>
+
+  {% if results %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>ID</th>
+        <th>Название</th>
+        <th>Категория</th>
+        <th>Адрес</th>
+        <th>Телефоны</th>
+        <th>E-mail</th>
+        <th>Сайт</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td>{{ r.position }}</td>
+        <td>{{ r.premise.premise_id }}</td>
+        <td><a href="{{ r.premise.detail_url }}" rel="noopener noreferrer" target="_blank">{{ r.premise.title }}</a></td>
+        <td>{{ r.premise.category }}</td>
+        <td>{{ r.premise.address }}</td>
+        <td class="multiline">{{ r.premise.phones }}</td>
+        <td class="multiline">{{ r.premise.emails }}</td>
+        <td class="multiline">{% if r.premise.website_url %}<a href="{{ r.premise.website_url }}" rel="noopener noreferrer" target="_blank">{{ r.premise.website_url }}</a>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% elif run.status == 'ok' %}
+  <p>Записей нет (пустая выдача).</p>
+  {% endif %}
+</body>
+</html>

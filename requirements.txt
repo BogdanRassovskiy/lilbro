@@ -1,0 +1,4 @@
+Django>=2.2,<3
+playwright>=1.40
+trafilatura
+aiogram>=3,<4

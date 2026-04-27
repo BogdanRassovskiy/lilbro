@@ -1,0 +1,97 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if agent %}Настройка агента{% else %}Создание агента{% endif %}</title>
+  <style>
+    :root { --bg:#0f1218; --surface:#1a1f2a; --border:#2a3344; --text:#e8ecf3; --muted:#8b95a8; --accent:#5b8def; }
+    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); padding:1.5rem; }
+    .wrap { max-width:42rem; margin:0 auto; }
+    .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+    .btn { display:inline-block; padding:0.55rem 0.9rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); text-decoration:none; font-weight:600; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1rem; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+    label { display:block; color:var(--muted); font-size:0.78rem; margin-bottom:0.35rem; text-transform:uppercase; letter-spacing:.04em; }
+    input, select { width:100%; box-sizing:border-box; padding:0.55rem 0.65rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); outline:none; }
+    .full { grid-column:1 / -1; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a class="btn" href="{% url 'firmy:agents' %}" data-i18n="agentForm.toAgents">← К списку агентов</a>
+      <div style="color:var(--muted);">{% if agent %}Настройка агента{% else %}Новый агент{% endif %}</div>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <span style="font-size:0.78rem;color:#8b95a8;" data-i18n="lang.label">Язык</span>
+        <select data-lang-switch style="background:#0f1218;color:#e8ecf3;border:1px solid #2a3344;border-radius:6px;padding:0.15rem 0.3rem;font-size:0.78rem;">
+          <option value="ru" data-i18n="lang.ru">Русский</option>
+          <option value="cs" data-i18n="lang.cs">Čeština</option>
+        </select>
+      </div>
+    </div>
+    {% if messages %}
+      <ul style="margin:0 0 1rem; padding-left:1.2rem; color:var(--muted);">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>
+    {% endif %}
+    <form class="card" method="post">
+      {% csrf_token %}
+      <div class="grid">
+        <div>
+          <label>Имя</label>
+          <input name="name" value="{{ payload.name }}" required>
+        </div>
+        <div>
+          <label>Аватар (emoji)</label>
+          <input name="avatar" value="{{ payload.avatar|default:'👤' }}" placeholder="👤">
+        </div>
+        <div>
+          <label>Роль</label>
+          <select name="role">
+            <option value="searcher"{% if payload.role == 'searcher' %} selected{% endif %}>поисковик</option>
+            <option value="evaluator"{% if payload.role == 'evaluator' %} selected{% endif %}>оценщик</option>
+            <option value="interviewer"{% if payload.role == 'interviewer' %} selected{% endif %}>собеседник</option>
+          </select>
+        </div>
+        <div>
+          <label>Название модели</label>
+          <select name="model_name">
+            <option value="">— по умолчанию —</option>
+            {% for m in model_choices %}
+              <option value="{{ m }}"{% if payload.model_name == m %} selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Лимит токенов</label>
+          <input name="token_limit" type="number" min="0" value="{{ payload.token_limit }}">
+        </div>
+        <div>
+          <label>Email (обязательно для собеседника)</label>
+          <input name="email" type="email" value="{{ payload.email }}">
+        </div>
+        <div class="full">
+          <label>Номер телефона (обязательно для собеседника)</label>
+          <input name="phone" value="{{ payload.phone }}">
+        </div>
+                <div class="full">
+                  <label>Промпт #1: Разрешенные темы и вопросы (scope)</label>
+                  <textarea name="prompt_scope" style="width:100%;box-sizing:border-box;padding:0.55rem 0.65rem;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;min-height:110px;resize:vertical;">{{ payload.prompt_scope }}</textarea>
+                </div>
+                <div class="full">
+                  <label>Промпт #2: Стратегия и тактика ответа (script)</label>
+                  <textarea name="prompt_strategy" style="width:100%;box-sizing:border-box;padding:0.55rem 0.65rem;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;min-height:130px;resize:vertical;">{{ payload.prompt_strategy }}</textarea>
+                </div>
+                <div class="full" style="color:var(--muted);font-size:0.82rem;">
+                  Для роли "собеседник": если вопрос вне scope-промпта, агент не отвечает сам и эскалирует в Telegram.
+                </div>
+      </div>
+      <div style="margin-top:0.9rem; text-align:right;">
+        <button class="btn" type="submit" data-i18n="agentForm.save">Сохранить</button>
+      </div>
+    </form>
+  </div>
+  <script src="{% static 'firmy/js/i18n.js' %}"></script>
+</body>
+</html>
+

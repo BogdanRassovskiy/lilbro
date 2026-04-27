@@ -1,0 +1,13 @@
+.env
+.env.*
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.Python
+*.sqlite3
+db.sqlite3
+.DS_Store
+.telegram_bridge_state.json
+.ai_sales_memory/
+parser_dumps/

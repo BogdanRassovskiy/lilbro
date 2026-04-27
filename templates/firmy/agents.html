@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Агенты</title>
+  <style>
+    :root { --bg:#0f1218; --surface:#1a1f2a; --border:#2a3344; --text:#e8ecf3; --muted:#8b95a8; --accent:#5b8def; }
+    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); padding:1.5rem; }
+    .wrap { max-width:72rem; margin:0 auto; }
+    .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+    .btn { display:inline-block; padding:0.55rem 0.9rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); text-decoration:none; font-weight:600; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.9rem; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0.9rem; min-height:170px; display:flex; flex-direction:column; justify-content:space-between; }
+    .avatar { width:38px; height:38px; border-radius:50%; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:20px; background:#141a25; }
+    .name { margin-top:0.55rem; font-weight:700; }
+    .meta { color:var(--muted); font-size:0.82rem; margin-top:0.2rem; }
+    .actions { margin-top:0.8rem; display:flex; gap:0.45rem; flex-wrap:wrap; }
+    .btn.small { padding:0.35rem 0.6rem; font-size:0.82rem; }
+    .selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(91,141,239,0.4); }
+    .plus { font-size:38px; color:var(--muted); line-height:1; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a class="btn" href="/" data-i18n="agents.toBase">← База</a>
+      <div style="color:var(--muted);" data-i18n="agents.title">Выбор агента</div>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <span style="font-size:0.78rem;color:#8b95a8;" data-i18n="lang.label">Язык</span>
+        <select data-lang-switch style="background:#0f1218;color:#e8ecf3;border:1px solid #2a3344;border-radius:6px;padding:0.15rem 0.3rem;font-size:0.78rem;">
+          <option value="ru" data-i18n="lang.ru">Русский</option>
+          <option value="cs" data-i18n="lang.cs">Čeština</option>
+        </select>
+        <a class="btn" href="{% url 'firmy:agent_new' %}" data-i18n="agents.create">Создать агента</a>
+      </div>
+    </div>
+    {% if messages %}
+      <ul style="margin:0 0 1rem; padding-left:1.2rem; color:var(--muted);">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>
+    {% endif %}
+    <div class="grid">
+      {% for a in agents %}
+        <div class="card{% if selected_interviewer and selected_interviewer.id == a.id %} selected{% endif %}{% if selected_evaluator and selected_evaluator.id == a.id %} selected{% endif %}">
+          <div>
+            <div class="avatar">{{ a.avatar|default:"👤" }}</div>
+            <div class="name">{{ a.name }}</div>
+            <div class="meta">ID {{ a.id }} · {{ a.get_role_display }}</div>
+            <div class="meta">{{ a.model_name }} · лимит {{ a.token_limit }}</div>
+            <div class="meta">
+              {% if selected_interviewer and selected_interviewer.id == a.id %}слот: собеседник{% endif %}
+              {% if selected_evaluator and selected_evaluator.id == a.id %}{% if selected_interviewer and selected_interviewer.id == a.id %} · {% endif %}слот: оценщик{% endif %}
+            </div>
+          </div>
+          <div class="actions">
+            {% if a.role == "interviewer" %}
+              <form method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="select">
+                <input type="hidden" name="slot" value="interviewer">
+                <input type="hidden" name="agent_id" value="{{ a.id }}">
+                <input type="hidden" name="next" value="/">
+                <button class="btn small" type="submit">Выбрать в собеседники</button>
+              </form>
+            {% endif %}
+            {% if a.role == "evaluator" %}
+              <form method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="select">
+                <input type="hidden" name="slot" value="evaluator">
+                <input type="hidden" name="agent_id" value="{{ a.id }}">
+                <input type="hidden" name="next" value="/">
+                <button class="btn small" type="submit">Выбрать в оценщики</button>
+              </form>
+            {% endif %}
+            <a class="btn small" href="{% url 'firmy:agent_settings' a.id %}">Настроить</a>
+          </div>
+        </div>
+      {% endfor %}
+      <a class="card" href="{% url 'firmy:agent_new' %}" style="text-decoration:none; color:inherit; align-items:center; justify-content:center; display:flex;">
+        <div style="text-align:center;">
+          <div class="plus">+</div>
+          <div class="meta" style="margin-top:0.5rem;">Создать нового агента</div>
+        </div>
+      </a>
+    </div>
+  </div>
+  <script src="{% static 'firmy/js/i18n.js' %}"></script>
+</body>
+</html>
+

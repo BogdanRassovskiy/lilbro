@@ -1,0 +1,1747 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Processing — Firmy</title>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --surface: #1a1f2a;
+      --border: #2a3344;
+      --text: #e8ecf3;
+      --muted: #8b95a8;
+      --accent: #5b8def;
+    }
+    body {
+      margin: 0;
+      height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1rem;
+      overflow: hidden;
+    }
+    a { color: var(--accent); }
+    .wrap {
+      max-width: 96rem;
+      margin: 0 auto;
+      height: calc(100vh - 2rem);
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      min-width: 0;
+      flex: 1;
+    }
+    .topbar-title {
+      color: var(--muted);
+      line-height: 1.15;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .topbar-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .lang-wrap {
+      display: flex;
+      gap: 0.35rem;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .lang-wrap select {
+      background:#0f1218;
+      color:#e8ecf3;
+      border:1px solid #2a3344;
+      border-radius:6px;
+      padding:0.15rem 0.3rem;
+      font-size:0.78rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.55rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .btn[disabled] {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 36% 64%;
+      gap: 1rem;
+      min-height: 0;
+      flex: 1;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      max-height: none;
+    }
+    .mobile-only { display: none; }
+    .panel-head {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .chat-list-form {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .chat-list {
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .chat-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.55rem;
+      align-items: start;
+      padding: 0.7rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      border-left: 3px solid transparent;
+    }
+    .state-icon {
+      display: inline-flex;
+      width: 20px;
+      justify-content: center;
+      margin-right: 0.2rem;
+      opacity: 0.95;
+    }
+    .chat-row.state-cold { border-left-color: #5f708f; }
+    .chat-row.state-warm { border-left-color: #b88b3d; }
+    .chat-row.state-hot { border-left-color: #3fa56b; }
+    .chat-row.state-lost { border-left-color: #b74f4f; }
+    .chat-row.active { background: #202737; }
+    .chat-row:last-child { border-bottom: none; }
+    .chat-link {
+      color: var(--text);
+      text-decoration: none;
+      display: block;
+    }
+    .chat-title {
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+      word-break: break-word;
+    }
+    .chat-meta {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 0.2rem;
+    }
+    .chat-badges {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+    .badge {
+      padding: 0.1rem 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .row-menu {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.55rem;
+      display: none;
+      gap: 0.4rem;
+      align-items: center;
+      padding: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #141a25;
+    }
+    .chat-row.menu-open .row-menu { display: flex; }
+    .row-menu button {
+      appearance: none;
+      border: 1px solid #4b2a2a;
+      background: #2a1515;
+      color: #fff;
+      padding: 0.35rem 0.55rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+    .chat-window {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      height: 100%;
+    }
+    .chat-header {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .chat-history {
+      padding: 1rem;
+      flex: 1;
+      overflow: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      background: #121722;
+    }
+    .chat-history.flipped .msg-wrap.in { align-self: flex-end; align-items: flex-end; }
+    .chat-history.flipped .msg-wrap.out { align-self: flex-start; align-items: flex-start; }
+    .chat-history.flipped .msg.in { background: #2b3853; }
+    .chat-history.flipped .msg.out { background: #1f2737; }
+    .msg-wrap {
+      display: flex;
+      flex-direction: column;
+      max-width: 78%;
+      gap: 0.25rem;
+    }
+    .msg-wrap.in { align-self: flex-start; }
+    .msg-wrap.out { align-self: flex-end; align-items: flex-end; }
+    .msg {
+      display: block;
+      width: -moz-fit-content;
+      width: fit-content;
+      min-width: 0;
+      padding: 0.6rem 0.7rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
+    .msg.in { background: #1f2737; }
+    .msg.out { background: #2b3853; }
+    .msg-actions {
+      display: flex;
+      align-items: center;
+      margin-top: 0.2rem;
+      min-height: 1.45rem;
+    }
+    .msg-wrap.in .msg-actions { align-self: flex-start; }
+    .msg-wrap.out .msg-actions { align-self: flex-end; }
+    .msg-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--border);
+      background: #1a2130;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      line-height: 0;
+      flex-shrink: 0;
+    }
+    .msg-copy-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: #222836;
+    }
+    .msg-copy-btn svg {
+      pointer-events: none;
+    }
+    .msg-meta {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .msg-toggle {
+      margin-top: 0.25rem;
+      border: 1px solid var(--border);
+      background: #1a2130;
+      color: var(--muted);
+      border-radius: 8px;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.45rem;
+      cursor: pointer;
+    }
+    .msg.pending {
+      background: rgba(107, 126, 161, 0.16);
+      border-style: dashed;
+      color: #d6e2ff;
+      opacity: 0.95;
+    }
+    .pending-actions {
+      display: flex;
+      gap: 0.35rem;
+      margin-top: 0.25rem;
+      flex-wrap: wrap;
+    }
+    .pending-actions .btn {
+      font-size: 0.74rem;
+      padding: 0.24rem 0.46rem;
+    }
+    .typing-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin: 0 3px;
+      border-radius: 50%;
+      background: #c6d2eb;
+      animation: blink 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-1px); }
+    }
+    .chat-form {
+      border-top: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      background: #171d2a;
+      flex-shrink: 0;
+    }
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+    }
+    textarea { min-height: 64px; max-height: 140px; resize: vertical; margin-top: 0.35rem; line-height: 1.3; }
+    .checks {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin: 0.2rem 0 0.1rem;
+    }
+    .checks label {
+      color: var(--muted);
+      font-size: 0.88rem;
+      display: flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 20;
+      padding: 1rem;
+    }
+    .modal.open { display: flex; }
+    .modal-card {
+      width: min(760px, 100%);
+      max-height: 85vh;
+      overflow: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+      color: var(--muted);
+    }
+    .modal-body {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+    .delay-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 0.2rem;
+    }
+    .reply-indicator {
+      margin-top: 0.15rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      min-height: 0.95rem;
+    }
+    .eval-indicator {
+      margin-top: 0.12rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      min-height: 0.95rem;
+    }
+    .reply-indicator.state-wait { color: #c9b47a; }
+    .reply-indicator.state-run { color: #8ec0ff; }
+    .reply-indicator.state-done { color: #8fca9a; }
+    .reply-indicator.state-error { color: #e59393; }
+    .eval-indicator.state-wait { color: #c9b47a; }
+    .eval-indicator.state-run { color: #8ec0ff; }
+    .eval-indicator.state-done { color: #8fca9a; }
+    .eval-indicator.state-error { color: #e59393; }
+    .delay-dual {
+      position: relative;
+      width: 220px;
+      height: 24px;
+    }
+    .delay-dual input[type="range"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      height: 24px;
+      margin: 0;
+    }
+    .delay-dual input[type="range"]::-webkit-slider-thumb {
+      pointer-events: auto;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 0;
+      box-shadow: 0 0 0 2px rgba(91,141,239,0.25);
+      cursor: pointer;
+    }
+    .delay-dual input[type="range"]::-moz-range-thumb {
+      pointer-events: auto;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 0;
+      box-shadow: 0 0 0 2px rgba(91,141,239,0.25);
+      cursor: pointer;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; min-height: auto; }
+      body {
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+      }
+      .wrap {
+        height: auto;
+        min-height: calc(100vh - 2rem);
+      }
+      .panel {
+        height: auto;
+        max-height: none;
+      }
+      .chat-history {
+        max-height: 45vh;
+      }
+      .topbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.55rem;
+      }
+      .topbar-left {
+        align-items: flex-start;
+      }
+      .topbar-left .btn {
+        flex-shrink: 0;
+      }
+      .topbar-title {
+        font-size: 0.94rem;
+      }
+      .topbar-actions {
+        justify-content: flex-start;
+      }
+      .topbar-actions .btn {
+        padding: 0.48rem 0.72rem;
+        font-size: 0.92rem;
+      }
+      .lang-wrap {
+        margin-right: 0.2rem;
+      }
+      .mobile-only { display: inline-block; }
+      .layout[data-mobile-view="list"] .panel-chat { display: none; }
+      .layout[data-mobile-view="chat"] .panel-list { display: none; }
+      .layout[data-mobile-view="chat"] .panel-chat {
+        display: flex;
+        min-height: calc(100vh - 11rem);
+      }
+      .layout[data-mobile-view="list"] .panel-list {
+        display: flex;
+        min-height: calc(100vh - 11rem);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="topbar-left">
+        <a class="btn" href="/" data-i18n="processing.toBase">← Base</a>
+        <div class="topbar-title"><span data-i18n="processing.inProcessing">In processing</span> · {{ interviewer.avatar|default:"👤" }} {{ interviewer.name }}</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="lang-wrap">
+        <span style="font-size:0.78rem;color:#8b95a8;" data-i18n="lang.label">Language</span>
+        <select data-lang-switch>
+          <option value="ru" data-i18n="lang.ru">Russian</option>
+          <option value="cs" data-i18n="lang.cs">Čeština</option>
+        </select>
+        </div>
+        <form method="post" action="">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="toggle_global">
+          <input type="hidden" name="page" value="{{ page_obj.number }}">
+          <button class="btn" type="submit">
+            {% if processing_enabled %}<span data-i18n="processing.pause">⏸ Pause</span>{% else %}<span data-i18n="processing.resume">▶ Resume</span>{% endif %}
+          </button>
+        </form>
+        <a class="btn" href="/search/" data-i18n="processing.search">Search</a>
+      </div>
+    </div>
+
+    {% if messages %}
+      <ul class="messages" style="margin:0 0 1rem;padding-left:1.2rem;color:var(--muted);font-size:0.9rem;">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <div class="layout" data-mobile-view="{% if chat_open %}chat{% else %}list{% endif %}">
+      <div class="panel panel-list">
+        <div class="panel-head"><span data-i18n="processing.chatList">Chat list</span> ({{ page_obj.paginator.count }})</div>
+        <div class="chat-list">
+          {% for it in page_obj.object_list %}
+            <div class="chat-row state-{{ it.lead_state|default:'cold' }}{% if selected_item and selected_item.id == it.id %} active{% endif %}" data-item-id="{{ it.id }}">
+              <div class="row-menu" aria-hidden="true">
+                <form class="inline-form" method="post" action="">
+                  {% csrf_token %}
+                  <input type="hidden" name="form_type" value="delete_one">
+                  <input type="hidden" name="item_id" value="{{ it.id }}">
+                  <input type="hidden" name="page" value="{{ page_obj.number }}">
+                  <button type="submit" data-i18n="premises.delete">Delete</button>
+                </form>
+              </div>
+              <a class="chat-link" href="?page={{ page_obj.number }}&item={{ it.id }}">
+                <div class="chat-title">{{ it.premise.title }}</div>
+                <div class="chat-meta">ID {{ it.premise.premise_id }} · {{ it.queued_at|date:"Y-m-d H:i" }}</div>
+                <div class="chat-badges">
+                  <span class="state-icon">{% if processing_enabled and not it.paused_individual %}▶{% else %}⏸{% endif %}</span>
+                  <span class="badge"><span data-i18n="processing.badgeLead">lead</span>: {{ it.lead_state|default:"—" }}</span>
+                  {% if it.was_contacted %}<span class="badge"><span data-i18n="processing.badgeContact">contact</span>: <span data-i18n="common.yes">yes</span></span>{% else %}<span class="badge"><span data-i18n="processing.badgeContact">contact</span>: <span data-i18n="common.no">no</span></span>{% endif %}
+                  {% if it.was_answered %}<span class="badge"><span data-i18n="processing.badgeAnswer">answer</span>: <span data-i18n="common.yes">yes</span></span>{% else %}<span class="badge"><span data-i18n="processing.badgeAnswer">answer</span>: <span data-i18n="common.no">no</span></span>{% endif %}
+                  {% if it.do_not_contact %}<span class="badge" data-i18n="processing.badgeDoNotWrite">do not write</span>{% endif %}
+                </div>
+              </a>
+            </div>
+          {% empty %}
+            <div style="padding:1rem;color:var(--muted);" data-i18n="processing.listEmpty">List is empty.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="panel panel-chat">
+        {% if selected_item %}
+        <div class="chat-window">
+          <div class="chat-header">
+            <a class="btn secondary mobile-only" href="?page={{ page_obj.number }}" data-i18n="processing.backToChats">← Chats</a>
+            <div style="font-weight:700; margin-bottom:0.25rem;">{{ selected_item.premise.title }}</div>
+            <div style="color:var(--muted); font-size:0.85rem;">
+              <a href="{{ selected_item.premise.detail_url }}" target="_blank" rel="noopener noreferrer" data-i18n="processing.openCard">Open card</a>
+              · ID {{ selected_item.premise.premise_id }}
+            </div>
+            <div class="chat-badges" style="margin-top:0.45rem;">
+              <span id="lead-state-badge" class="badge">lead_state: {{ selected_item.lead_state|default:"—" }}</span>
+              <span id="response-type-badge" class="badge">response_type: {% if selected_response_type %}{{ selected_response_type|join:", " }}{% else %}—{% endif %}</span>
+              <span id="style-badge" class="badge">style: {% if selected_communication_style %}{{ selected_communication_style|join:", " }}{% else %}—{% endif %}</span>
+            </div>
+          </div>
+          <div id="chat-history" class="chat-history">
+            {% for msg in conversation %}
+              <div class="msg-wrap {% if msg.dir == 'in' %}in{% else %}out{% endif %}">
+                <div class="msg {% if msg.dir == 'in' %}in{% else %}out{% endif %}">
+                  <span class="msg-text">{{ msg.text }}</span>
+                </div>
+                <div class="msg-actions">
+                  <button type="button" class="msg-copy-btn" data-i18n-title="processing.copyMessage" data-i18n-aria="processing.copyMessage" title="Скопировать сообщение" aria-label="Скопировать сообщение">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+                {% if msg.summary and msg.summary != msg.text %}
+                  <button
+                    type="button"
+                    class="msg-toggle"
+                    data-mode="original"
+                    data-original="{{ msg.text|urlencode }}"
+                    data-summary="{{ msg.summary|urlencode }}"
+                  data-i18n="processing.showSummary">Show summary</button>
+                {% endif %}
+                <div class="msg-meta">
+                  {% if msg.dir == 'in' %}<span data-i18n="processing.incoming">incoming</span>{% else %}<span data-i18n="processing.outgoing">outgoing</span>{% endif %}
+                  {% if msg.dir != 'in' %}
+                    · {{ msg.agent_name|default:interviewer.name }}
+                  {% endif %}
+                  · {{ msg.ts }}
+                </div>
+              </div>
+            {% empty %}
+              <div style="color:var(--muted);" data-i18n="processing.conversationEmpty">Conversation is empty.</div>
+            {% endfor %}
+          </div>
+          <div class="chat-form" data-item-id="{{ selected_item.id }}" data-gen-status="{{ selected_item.gen_status }}" data-eval-status="{{ selected_item.eval_status }}" data-eval-stage="{{ selected_item.eval_stage|default:'' }}" data-draft-text="{{ selected_item.draft_text|urlencode }}" data-draft-confirm="{{ selected_item.draft_requires_confirmation|yesno:'1,0' }}">
+          <form id="chat-form" method="post" action="">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="chat">
+            <input type="hidden" name="item_id" value="{{ selected_item.id }}">
+            <input type="hidden" name="page" value="{{ page_obj.number }}">
+            <input id="message-side" type="hidden" name="message_side" value="out">
+            <div class="checks">
+              <label><input id="do-not-contact" type="checkbox" name="do_not_contact" value="1"{% if selected_item.do_not_contact %} checked{% endif %}> <span data-i18n="processing.doNotWrite">do not contact</span></label>
+            </div>
+            <textarea id="message-text" name="message_text" placeholder="Message text"></textarea>
+            <div class="delay-wrap">
+              <span data-i18n="processing.replyTimer">Reply timer:</span>
+              <div class="delay-dual">
+                <input id="delay-min" type="range" min="0" max="10" step="1" value="{{ selected_item.reply_delay_min_minutes|default:0 }}">
+                <input id="delay-max" type="range" min="0" max="10" step="1" value="{{ selected_item.reply_delay_max_minutes|default:0 }}">
+              </div>
+              <span id="delay-label">{{ selected_item.reply_delay_min_minutes|default:0 }}–{{ selected_item.reply_delay_max_minutes|default:0 }} min</span>
+            </div>
+            <div id="reply-indicator" class="reply-indicator"></div>
+            <div id="eval-indicator" class="eval-indicator"></div>
+            <div style="margin-top:0.35rem; display:flex; justify-content:flex-end; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+              <button class="btn secondary" type="submit" form="toggle-item-form">
+                {% if selected_item.paused_individual %}<span data-i18n="processing.resume">▶ Resume</span>{% else %}<span data-i18n="processing.pause">⏸ Pause</span>{% endif %}
+              </button>
+              <button class="btn secondary" type="submit" form="clear-chat-form" data-i18n="processing.clearChat">Clear chat</button>
+              <button id="swap-role-btn" class="btn secondary" type="button" data-i18n="processing.switchRole">Switch role</button>
+              <button id="eval-btn" class="btn" type="button" data-i18n="processing.evaluate"{% if not evaluator %} disabled data-i18n-title="processing.needEvaluator" title="Need evaluator selected"{% elif not selected_item.premise.website_url %} disabled data-i18n-title="processing.noWebsite" title="Company has no website"{% endif %}>Evaluate</button>
+              <button id="eval-view-btn" class="btn secondary" type="button" style="{% if not selected_item.evaluation_text %}display:none;{% endif %}" data-i18n="processing.evalView">Evaluation</button>
+              <button class="btn" type="submit" data-i18n="processing.send">Send</button>
+              <button id="gen-btn" class="btn" type="button" data-i18n="processing.generate">Generate</button>
+            </div>
+          </form>
+          <form id="toggle-item-form" method="post" action="" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="toggle_item">
+            <input type="hidden" name="item_id" value="{{ selected_item.id }}">
+            <input type="hidden" name="page" value="{{ page_obj.number }}">
+          </form>
+          <form id="timer-form" method="post" action="" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="set_timer">
+            <input type="hidden" name="item_id" value="{{ selected_item.id }}">
+            <input type="hidden" name="page" value="{{ page_obj.number }}">
+            <input id="timer-min-field" type="hidden" name="reply_delay_min_minutes" value="{{ selected_item.reply_delay_min_minutes|default:0 }}">
+            <input id="timer-max-field" type="hidden" name="reply_delay_max_minutes" value="{{ selected_item.reply_delay_max_minutes|default:0 }}">
+          </form>
+          <form id="clear-chat-form" method="post" action="" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="clear_chat">
+            <input type="hidden" name="item_id" value="{{ selected_item.id }}">
+            <input type="hidden" name="page" value="{{ page_obj.number }}">
+          </form>
+          </div>
+        </div>
+        {% else %}
+          <div style="padding:1.2rem;color:var(--muted);" data-i18n="processing.processingEmpty">Processing list is empty.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="meta">
+      <div><span data-i18n="common.page">Page</span> {{ page_obj.number }} <span data-i18n="common.of">of</span> {{ page_obj.paginator.num_pages }}</div>
+      <div>
+        {% if page_obj.has_previous %}<a class="btn" href="?page={{ page_obj.previous_page_number }}{% if selected_item %}&item={{ selected_item.id }}{% endif %}">←</a>{% endif %}
+        {% if page_obj.has_next %}<a class="btn" href="?page={{ page_obj.next_page_number }}{% if selected_item %}&item={{ selected_item.id }}{% endif %}">→</a>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div id="eval-modal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <strong data-i18n="processing.companyEvaluation">Company evaluation</strong>
+        <button id="eval-close-btn" class="btn secondary" type="button" data-i18n="common.close">Close</button>
+      </div>
+      <div id="eval-text" class="modal-body">{% if selected_item and selected_item.evaluation_text %}{{ selected_item.evaluation_text }}{% endif %}</div>
+    </div>
+  </div>
+
+  <script src="{% static 'firmy/js/i18n.js' %}"></script>
+  <script>
+    (function () {
+      var rows = Array.prototype.slice.call(document.querySelectorAll(".chat-row[data-item-id]"));
+      if (!rows.length) return;
+
+      function closeAll() {
+        rows.forEach(function (r) { r.classList.remove("menu-open"); });
+      }
+
+      document.addEventListener("click", function (e) {
+        if (!e.target.closest(".row-menu")) closeAll();
+      });
+
+      rows.forEach(function (row) {
+        var timer = null;
+        var moved = false;
+
+        function startPress() {
+          moved = false;
+          clearTimeout(timer);
+          timer = setTimeout(function () {
+            closeAll();
+            row.classList.add("menu-open");
+          }, 500);
+        }
+
+        function cancelPress() {
+          clearTimeout(timer);
+          timer = null;
+        }
+
+        row.addEventListener("pointerdown", function (e) {
+          // ignore clicks inside menu/button
+          if (e.target.closest(".row-menu")) return;
+          startPress();
+        });
+        row.addEventListener("pointermove", function () {
+          moved = true;
+          cancelPress();
+        });
+        row.addEventListener("pointerup", function () {
+          cancelPress();
+        });
+        row.addEventListener("pointercancel", cancelPress);
+
+        // when menu is open, row click should not immediately follow link
+        row.addEventListener("click", function (e) {
+          if (row.classList.contains("menu-open") && !e.target.closest(".row-menu")) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
+      });
+    })();
+
+    (function () {
+      var form = document.getElementById("chat-form");
+      var dnc = document.getElementById("do-not-contact");
+      var message = document.getElementById("message-text");
+      if (!form) return;
+
+      if (dnc) {
+        dnc.addEventListener("change", function () {
+          form.submit();
+        });
+      }
+
+      if (message) {
+        message.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+          }
+        });
+      }
+    })();
+
+    (function () {
+      var genBtn = document.getElementById("gen-btn");
+      var evalBtn = document.getElementById("eval-btn");
+      var evalViewBtn = document.getElementById("eval-view-btn");
+      var swapRoleBtn = document.getElementById("swap-role-btn");
+      var evalModal = document.getElementById("eval-modal");
+      var evalCloseBtn = document.getElementById("eval-close-btn");
+      var evalTextEl = document.getElementById("eval-text");
+      var chatForm = document.getElementById("chat-form");
+      var chatBox = document.querySelector(".chat-form[data-item-id]");
+      var textarea = document.getElementById("message-text");
+      var delayMin = document.getElementById("delay-min");
+      var delayMax = document.getElementById("delay-max");
+      var delayLabel = document.getElementById("delay-label");
+      var timerForm = document.getElementById("timer-form");
+      var timerMinField = document.getElementById("timer-min-field");
+      var timerMaxField = document.getElementById("timer-max-field");
+      var messageSide = document.getElementById("message-side");
+      var chatHistory = document.getElementById("chat-history");
+      if (!genBtn || !chatBox) return;
+
+      function openEvalModal() {
+        if (!evalModal) return;
+        evalModal.classList.add("open");
+      }
+      function closeEvalModal() {
+        if (!evalModal) return;
+        evalModal.classList.remove("open");
+      }
+      if (evalCloseBtn) evalCloseBtn.addEventListener("click", closeEvalModal);
+      if (evalModal) {
+        evalModal.addEventListener("click", function (e) {
+          if (e.target === evalModal) closeEvalModal();
+        });
+      }
+      if (evalViewBtn) {
+        evalViewBtn.addEventListener("click", function () {
+          openEvalModal();
+        });
+      }
+
+      function getCsrfToken() {
+        if (chatForm) {
+          var el = chatForm.querySelector("input[name=csrfmiddlewaretoken]");
+          if (el && el.value) return el.value;
+        }
+        return "";
+      }
+      function updateDelayLabel(minV, maxV) {
+        if (delayLabel) delayLabel.textContent = minV + "–" + maxV + " " + tr("common.minutesShort", "min");
+      }
+      function normalizeDelayPair(minV, maxV) {
+        var a = Math.max(0, Math.min(10, parseInt(minV || 0, 10) || 0));
+        var b = Math.max(0, Math.min(10, parseInt(maxV || 0, 10) || 0));
+        if (a > b) { var t = a; a = b; b = t; }
+        return { min: a, max: b };
+      }
+      var timerSaveDebounce = null;
+      function saveTimer(minV, maxV) {
+        if (!timerForm) return;
+        var pair = normalizeDelayPair(minV, maxV);
+        if (timerMinField) timerMinField.value = String(pair.min);
+        if (timerMaxField) timerMaxField.value = String(pair.max);
+        updateDelayLabel(pair.min, pair.max);
+        if (timerSaveDebounce) clearTimeout(timerSaveDebounce);
+        timerSaveDebounce = setTimeout(function () {
+          var fd = new FormData(timerForm);
+          fetch("", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "X-CSRFToken": getCsrfToken(),
+              "X-Requested-With": "XMLHttpRequest",
+              "Accept": "application/json"
+            },
+            body: fd
+          }).then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data || !data.ok) return;
+              var p = normalizeDelayPair(data.min, data.max);
+              if (delayMin) delayMin.value = String(p.min);
+              if (delayMax) delayMax.value = String(p.max);
+              updateDelayLabel(p.min, p.max);
+            })
+            .catch(function () { /* silent */ });
+        }, 250);
+      }
+      function escHtml(s) {
+        return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+      function tr(key, fallback) {
+        return (window.I18N && window.I18N.t(key, fallback)) || fallback;
+      }
+      function escAttr(s) {
+        return encodeURIComponent(String(s || ""));
+      }
+      function isNearBottom(el) {
+        if (!el) return true;
+        return (el.scrollHeight - el.scrollTop - el.clientHeight) < 40;
+      }
+      function scrollBottom(el) {
+        if (!el) return;
+        el.scrollTop = el.scrollHeight;
+      }
+      function messageKey(msg) {
+        if (!msg) return "";
+        var dir = (msg.dir === "in") ? "in" : "out";
+        var text = String(msg.text || "");
+        return dir + "|" + text;
+      }
+      var summaryModeByKey = Object.create(null);
+      var typingActive = false;
+      var suppressAutoScrollOnce = false;
+      var initialScrollToEndPending = true;
+      function renderConversation(conversation) {
+        if (!chatHistory || !Array.isArray(conversation)) return;
+        var stick = isNearBottom(chatHistory);
+        if (typingHideTimer) {
+          clearTimeout(typingHideTimer);
+          typingHideTimer = null;
+        }
+        typingEl = null;
+        var html = "";
+        if (!conversation.length) {
+          html = '<div style="color:var(--muted);">' + escHtml(tr("processing.conversationEmpty", "Conversation is empty.")) + "</div>";
+        } else {
+          conversation.forEach(function (msg) {
+            var dir = (msg && msg.dir === "in") ? "in" : "out";
+            var text = escHtml((msg && msg.text) || "");
+            var rawText = ((msg && msg.text) || "");
+            var summaryRaw = ((msg && msg.summary) || "").trim();
+            var hasSummary = !!summaryRaw && summaryRaw !== ((msg && msg.text) || "");
+            var key = messageKey(msg);
+            var mode = hasSummary ? (summaryModeByKey[key] || "original") : "original";
+            var shownText = (hasSummary && mode === "summary") ? escHtml(summaryRaw) : text;
+            var who = (dir === "in") ? tr("processing.incoming", "incoming") : tr("processing.outgoing", "outgoing");
+            var agent = (dir !== "in" && msg && msg.agent_name) ? (" · " + escHtml(msg.agent_name)) : "";
+            var ts = escHtml((msg && msg.ts) || "");
+            var copyLabel = escAttr(tr("processing.copyMessage", "Copy message"));
+            var copyBtn =
+              '<div class="msg-actions"><button type="button" class="msg-copy-btn" title="' + copyLabel + '" aria-label="' + copyLabel + '">'
+              + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>'
+              + "</button></div>";
+            html += '<div class="msg-wrap ' + dir + '">'
+              + '<div class="msg ' + dir + '"><span class="msg-text">' + shownText + "</span></div>"
+              + copyBtn
+              + (hasSummary
+                ? ('<button type="button" class="msg-toggle" data-key="' + escAttr(key) + '" data-mode="' + escHtml(mode) + '" data-original="' + escAttr(rawText) + '" data-summary="' + escAttr(summaryRaw) + '">' + escHtml(mode === "summary" ? tr("processing.showOriginal", "Show original") : tr("processing.showSummary", "Show summary")) + "</button>")
+                : "")
+              + '<div class="msg-meta">' + who + agent + " · " + ts + "</div>"
+              + "</div>";
+          });
+        }
+        chatHistory.innerHTML = html;
+        if (initialScrollToEndPending) {
+          scrollBottom(chatHistory);
+          initialScrollToEndPending = false;
+        }
+        renderPendingOutbox();
+        renderPendingDraft();
+        suppressAutoScrollOnce = false;
+      }
+      var typingEl = null;
+      function showTyping() {
+        if (typingEl && !typingEl.isConnected) typingEl = null;
+        if (!chatHistory || typingEl) return;
+        typingActive = true;
+        if (typingHideTimer) {
+          clearTimeout(typingHideTimer);
+          typingHideTimer = null;
+        }
+        var wrap = document.createElement("div");
+        wrap.className = "msg-wrap out";
+        wrap.innerHTML = '<div class="msg out"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div><div class="msg-meta">' + escHtml(tr("processing.agentTyping", "Agent is typing...")) + "</div>";
+        typingEl = wrap;
+        chatHistory.appendChild(wrap);
+      }
+      function hideTyping() {
+        typingActive = false;
+        if (typingHideTimer) {
+          clearTimeout(typingHideTimer);
+          typingHideTimer = null;
+        }
+        var waitMs = Math.max(0, typingForceVisibleUntil - Date.now());
+        if (waitMs > 0) {
+          typingHideTimer = setTimeout(function () {
+            if (typingEl && typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+            typingEl = null;
+            typingHideTimer = null;
+          }, waitMs);
+          return;
+        }
+        if (typingEl && typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+        typingEl = null;
+      }
+      var roleModeKey = "chat_role_mode";
+      function roleMode() {
+        try { return sessionStorage.getItem(roleModeKey) || "agent"; } catch (e) { return "agent"; }
+      }
+      function setRoleMode(mode) {
+        try { sessionStorage.setItem(roleModeKey, mode); } catch (e) {}
+      }
+      function applyRoleMode(mode) {
+        var isFirm = mode === "firm";
+        if (messageSide) messageSide.value = isFirm ? "in" : "out";
+        if (textarea) {
+          textarea.placeholder = isFirm
+            ? tr("processing.placeholderFirm", "Message from company")
+            : (tr("processing.placeholderAgent", "Message from agent") + " {{ interviewer.name }}");
+        }
+        if (chatHistory) {
+          chatHistory.classList.toggle("flipped", isFirm);
+        }
+        if (genBtn) genBtn.style.display = isFirm ? "none" : "";
+        if (evalBtn) evalBtn.style.display = isFirm ? "none" : "";
+        if (evalViewBtn) {
+          var hasEval = (evalViewBtn.dataset.hasEval || "0") === "1";
+          evalViewBtn.style.display = (!isFirm && hasEval) ? "" : "none";
+        }
+        if (swapRoleBtn) swapRoleBtn.textContent = isFirm ? tr("processing.roleFirm", "Role: company") : tr("processing.roleAgent", "Role: agent");
+        renderPendingDraft();
+      }
+
+      function setGenUiRunning() {
+        genBtn.disabled = true;
+        genBtn.textContent = tr("processing.generating", "Generating…");
+      }
+      function setGenUiIdle() {
+        genBtn.disabled = false;
+        genBtn.textContent = tr("processing.generate", "Generate");
+      }
+      function setGenUiError() {
+        genBtn.disabled = false;
+        genBtn.textContent = tr("processing.generate", "Generate");
+      }
+      function setEvalUiRunning() {
+        if (!evalBtn) return;
+        evalBtn.disabled = true;
+        evalBtn.textContent = tr("processing.evaluating", "Evaluating…");
+      }
+      function setEvalUiIdle() {
+        if (!evalBtn) return;
+        evalBtn.disabled = false;
+        evalBtn.textContent = tr("processing.evaluate", "Evaluate");
+      }
+      function setEvalUiError() {
+        if (!evalBtn) return;
+        evalBtn.disabled = false;
+        evalBtn.textContent = tr("processing.evaluate", "Evaluate");
+      }
+      function showEvaluationButton(show) {
+        if (!evalViewBtn) return;
+        evalViewBtn.dataset.hasEval = show ? "1" : "0";
+        evalViewBtn.style.display = (show && roleMode() !== "firm") ? "" : "none";
+      }
+
+      var itemId = chatBox.getAttribute("data-item-id");
+      var statusUrl = "{% url 'firmy:processing_generate_status' %}";
+      var startUrl = "{% url 'firmy:processing_generate_start' %}";
+      var evalStatusUrl = "{% url 'firmy:processing_evaluate_status' %}";
+      var evalStartUrl = "{% url 'firmy:processing_evaluate_start' %}";
+      var replyStatusUrl = "{% url 'firmy:processing_reply_status' %}";
+      var pollTimer = null;
+      var evalPollTimer = null;
+      var replyPollTimer = null;
+      var replyIdlePollTimer = null;
+      var typingHideTimer = null;
+      var typingForceVisibleUntil = 0;
+      var chatSubmitInFlight = false;
+      var overrideKey = "draft_override_" + itemId;
+      var leadStateBadge = document.getElementById("lead-state-badge");
+      var responseTypeBadge = document.getElementById("response-type-badge");
+      var styleBadge = document.getElementById("style-badge");
+      var replyIndicatorEl = document.getElementById("reply-indicator");
+      var evalIndicatorEl = document.getElementById("eval-indicator");
+      var pendingDraftText = "";
+      var pendingDraftNeedsConfirm = false;
+      var pendingOutbox = [];
+      var pendingOutboxSeq = 0;
+      var outboxSending = false;
+
+      function setOverride(val) {
+        try { sessionStorage.setItem(overrideKey, val ? "1" : "0"); } catch (e) {}
+      }
+      function getOverride() {
+        try { return sessionStorage.getItem(overrideKey) === "1"; } catch (e) { return false; }
+      }
+      function updateLeadUi(data) {
+        if (!data) return;
+        var lead = (data.lead_state || "").trim();
+        var resp = Array.isArray(data.response_type) ? data.response_type : [];
+        var style = Array.isArray(data.communication_style) ? data.communication_style : [];
+        if (leadStateBadge) leadStateBadge.textContent = "lead_state: " + (lead || "—");
+        if (responseTypeBadge) responseTypeBadge.textContent = "response_type: " + (resp.length ? resp.join(", ") : "—");
+        if (styleBadge) styleBadge.textContent = "style: " + (style.length ? style.join(", ") : "—");
+
+        var currentRow = document.querySelector('.chat-row[data-item-id="' + String(itemId) + '"]')
+          || document.querySelector(".chat-row.active");
+        if (currentRow) {
+          currentRow.classList.remove("state-cold", "state-warm", "state-hot", "state-lost");
+          if (lead) currentRow.classList.add("state-" + lead);
+          var leadBadge = currentRow.querySelector(".chat-badges .badge");
+          if (leadBadge) leadBadge.textContent = tr("processing.badgeLead", "lead") + ": " + (lead || "—");
+        }
+      }
+      function setPendingDraft(text, needsConfirm) {
+        var next = (text || "").trim();
+        if (next !== pendingDraftText) suppressAutoScrollOnce = true;
+        pendingDraftText = next;
+        pendingDraftNeedsConfirm = !!needsConfirm;
+      }
+      function renderPendingDraft() {
+        if (!chatHistory) return;
+        var existing = chatHistory.querySelector(".msg-wrap.pending-wrap");
+        if (!pendingDraftText) {
+          if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+          return;
+        }
+        if (!existing) {
+          existing = document.createElement("div");
+          existing.className = "msg-wrap out pending-wrap";
+          chatHistory.appendChild(existing);
+        }
+        existing.innerHTML =
+          '<div class="msg out pending"><span class="msg-text">' + escHtml(pendingDraftText) + '</span></div>'
+          + '<div class="msg-meta">' + escHtml(tr("processing.readyToSend", "Message ready to send")) + '</div>'
+          + (!pendingDraftNeedsConfirm
+            ? ""
+            : ('<div class="pending-actions">'
+              + '<button type="button" class="btn secondary pending-send">' + escHtml(tr("processing.sendNow", "Send now")) + "</button>"
+              + '<button type="button" class="btn secondary pending-regen">' + escHtml(tr("processing.regenerate", "Regenerate")) + "</button>"
+              + '<button type="button" class="btn secondary pending-cancel">' + escHtml(tr("processing.cancel", "Cancel")) + "</button>"
+              + '<button type="button" class="btn secondary pending-copy">' + escHtml(tr("processing.copyText", "Copy text")) + "</button>"
+              + "</div>"));
+      }
+      function outboxStatusMeta(item) {
+        var status = (item && item.status) ? String(item.status) : "queued";
+        if (status === "sending") return { icon: "📨", text: tr("processing.outbox.sending", "sending") };
+        if (status === "sent") return { icon: "✅", text: tr("processing.outbox.sent", "sent") };
+        if (status === "error") return { icon: "⚠️", text: tr("processing.outbox.error", "error") };
+        return { icon: "⏳", text: tr("processing.outbox.queued", "queued") };
+      }
+      function renderPendingOutbox() {
+        if (!chatHistory) return;
+        Array.prototype.slice.call(chatHistory.querySelectorAll(".msg-wrap.outbox-wrap")).forEach(function (el) {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        });
+        pendingOutbox.forEach(function (item) {
+          var meta = outboxStatusMeta(item);
+          var row = document.createElement("div");
+          row.className = "msg-wrap out outbox-wrap";
+          row.setAttribute("data-outbox-id", String(item.id));
+          var actions = "";
+          if (item.status === "error") {
+            actions =
+              '<span class="pending-actions">'
+              + '<button type="button" class="btn secondary outbox-retry" data-outbox-id="' + escAttr(item.id) + '">↻</button>'
+              + '<button type="button" class="btn secondary outbox-remove" data-outbox-id="' + escAttr(item.id) + '">✖</button>'
+              + "</span>";
+          }
+          row.innerHTML =
+            '<div class="msg out pending"><span class="msg-text">' + escHtml(item.text || "") + "</span></div>"
+            + '<div class="msg-meta">' + meta.icon + " " + escHtml(meta.text) + " · " + escHtml(tr("processing.outbox.me", "me")) + actions + "</div>";
+          chatHistory.appendChild(row);
+        });
+      }
+      function addOutboxMessage(text, side) {
+        var raw = (text || "").trim();
+        if (!raw) return null;
+        pendingOutboxSeq += 1;
+        var item = {
+          id: "tmp_" + String(Date.now()) + "_" + String(pendingOutboxSeq),
+          text: raw,
+          side: (side === "in") ? "in" : "out",
+          status: "queued"
+        };
+        pendingOutbox.push(item);
+        renderPendingOutbox();
+        return item;
+      }
+      function removeOutboxMessage(id) {
+        var sid = String(id || "");
+        pendingOutbox = pendingOutbox.filter(function (m) { return String(m.id) !== sid; });
+        renderPendingOutbox();
+      }
+      function sendQueuedOutbox() {
+        if (outboxSending || !chatForm || !itemId) return;
+        var next = pendingOutbox.find(function (m) { return m.status === "queued"; });
+        if (!next) return;
+        outboxSending = true;
+        next.status = "sending";
+        renderPendingOutbox();
+        var fd = new FormData(chatForm);
+        fd.set("message_text", next.text);
+        fd.set("message_side", next.side || "out");
+        fetch("", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": getCsrfToken(),
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json"
+          },
+          body: fd
+        }).then(function (r) {
+            if (!r.ok) throw new Error("bad_status");
+            return r.json();
+          })
+          .then(function (data) {
+            if (!data || !data.ok) throw new Error("bad_payload");
+            next.status = "sent";
+            renderPendingOutbox();
+            if (typeof data.draft_text === "string") {
+              setPendingDraft(data.draft_text, !!data.draft_requires_confirmation);
+              renderPendingDraft();
+            }
+            if (Array.isArray(data.conversation)) renderConversation(data.conversation);
+            updateLeadUi(data);
+            setReplyIndicator({
+              status: data.reply_status || "",
+              reply_pending: !!data.reply_pending,
+              error: ""
+            });
+            if (data.reply_status === "running") startReplyPolling(true);
+            else if (data.reply_pending) startReplyPolling(false);
+            else {
+              stopReplyPolling();
+              hideTyping();
+            }
+            setTimeout(function () {
+              removeOutboxMessage(next.id);
+            }, 900);
+          })
+          .catch(function () {
+            next.status = "error";
+            renderPendingOutbox();
+            alert(tr("alerts.sendFailed", "Failed to send message."));
+            replyPollOnce();
+          })
+          .finally(function () {
+            outboxSending = false;
+            sendQueuedOutbox();
+          });
+      }
+      function triggerGeneration() {
+        if (!itemId || !genBtn || genBtn.disabled) return;
+        // New generation run: allow autofill again unless user edits.
+        setOverride(false);
+        setGenUiRunning();
+        var fd = new FormData();
+        fd.append("item_id", itemId);
+        fd.append("role_mode", roleMode());
+        fetch(startUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "X-CSRFToken": getCsrfToken() },
+          body: fd
+        }).then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.ok) {
+              setGenUiIdle();
+              alert(tr("alerts.startGenFailed", "Failed to start generation."));
+              return;
+            }
+            startPolling();
+          })
+          .catch(function () {
+            setGenUiIdle();
+            alert(tr("alerts.startGenFailed", "Failed to start generation."));
+          });
+      }
+      function setReplyIndicator(data) {
+        if (!replyIndicatorEl) return;
+        var status = (data && data.status) ? String(data.status) : "";
+        var pending = !!(data && data.reply_pending);
+        var error = (data && data.error) ? String(data.error) : "";
+        var isEscalate = error.indexOf("ESCALATE_OWNER:") === 0;
+        var text = "";
+        var cls = "reply-indicator";
+        if (status === "running") {
+          text = tr("processing.status.generatingReply", "Status: agent is generating reply...");
+          cls += " state-run";
+        } else if (status === "error") {
+          if (isEscalate) {
+            text = tr("processing.status.awaitingHelp", "Status: waiting for operator help with response");
+            cls += " state-wait";
+          } else {
+            text = tr("processing.status.replyError", "Status: auto-reply error") + (error ? " (" + error + ")" : "");
+            cls += " state-error";
+          }
+        } else if (pending) {
+          text = tr("processing.status.waitTimer", "Status: waiting reply timer...");
+          cls += " state-wait";
+        } else if (status === "done") {
+          text = tr("processing.status.sent", "Status: message sent");
+          cls += " state-done";
+        } else {
+          text = "";
+        }
+        replyIndicatorEl.className = cls;
+        replyIndicatorEl.textContent = text;
+      }
+      function setEvalIndicator(data) {
+        if (!evalIndicatorEl) return;
+        var status = (data && data.status) ? String(data.status) : "";
+        var stage = (data && data.stage) ? String(data.stage) : "";
+        var err = (data && data.error) ? String(data.error) : "";
+        var text = "";
+        var cls = "eval-indicator";
+        if (status === "running") {
+          if (stage === "parsing") text = tr("processing.eval.parsing", "Evaluation: parsing website...");
+          else if (stage === "reparsing") text = tr("processing.eval.reparsing", "Evaluation: reparsing internal links...");
+          else if (stage === "analysis") text = tr("processing.eval.analysis", "Evaluation: analyzing data...");
+          else if (stage === "generating") text = tr("processing.eval.generating", "Evaluation: generating AI evaluation...");
+          else text = tr("processing.eval.running", "Evaluation: in progress...");
+          cls += " state-run";
+        } else if (status === "done") {
+          text = tr("processing.eval.done", "Evaluation: done");
+          cls += " state-done";
+        } else if (status === "error") {
+          text = tr("processing.eval.error", "Evaluation: error") + (err ? " (" + err + ")" : "");
+          cls += " state-error";
+        } else if (stage) {
+          text = tr("processing.eval.prefix", "Evaluation: ") + stage;
+          cls += " state-wait";
+        }
+        evalIndicatorEl.className = cls;
+        evalIndicatorEl.textContent = text;
+      }
+      function sendPendingDraft() {
+        if (!pendingDraftText || !chatForm) return;
+        if (chatSubmitInFlight) return;
+        chatSubmitInFlight = true;
+        var submitBtn = chatForm.querySelector("button[type='submit']");
+        if (submitBtn) submitBtn.disabled = true;
+        var fd = new FormData(chatForm);
+        fd.set("message_side", "out");
+        fd.set("message_text", pendingDraftText);
+        fetch("", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": getCsrfToken(),
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json"
+          },
+          body: fd
+        }).then(function (r) {
+            if (!r.ok) throw new Error("bad_status");
+            return r.json();
+          })
+          .then(function (data) {
+            if (!data || !data.ok) {
+              alert(tr("alerts.sendPendingFailed", "Failed to send message."));
+              return;
+            }
+            setPendingDraft("", false);
+            renderPendingDraft();
+            if (Array.isArray(data.conversation)) renderConversation(data.conversation);
+            updateLeadUi(data);
+            setReplyIndicator({
+              status: data.reply_status || "",
+              reply_pending: !!data.reply_pending,
+              error: ""
+            });
+          })
+          .catch(function () {
+            alert(tr("alerts.sendPendingFailed", "Failed to send message."));
+          })
+          .finally(function () {
+            chatSubmitInFlight = false;
+            if (submitBtn) submitBtn.disabled = false;
+          });
+      }
+      function clearPendingDraftOnServer() {
+        if (!itemId) return;
+        var fd = new FormData();
+        fd.append("form_type", "clear_draft");
+        fd.append("item_id", itemId);
+        fd.append("page", "{{ page_obj.number }}");
+        fetch("", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": getCsrfToken(),
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json"
+          },
+          body: fd
+        }).catch(function () { /* silent */ });
+      }
+
+      // If user edits/clears the textarea manually, do not overwrite it with generated draft.
+      if (textarea) {
+        textarea.addEventListener("input", function () {
+          setOverride(true);
+        });
+      }
+      if (chatHistory) {
+        chatHistory.addEventListener("click", function (e) {
+          var copyMsgBtn = e.target && e.target.closest ? e.target.closest(".msg-copy-btn") : null;
+          if (copyMsgBtn) {
+            var wrap = copyMsgBtn.closest(".msg-wrap");
+            var textEl = wrap ? wrap.querySelector(".msg .msg-text") : null;
+            var txt = textEl ? String(textEl.textContent || "").trim() : "";
+            if (!txt) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(txt).catch(function () {});
+            } else {
+              var ta = document.createElement("textarea");
+              ta.value = txt;
+              document.body.appendChild(ta);
+              ta.select();
+              try { document.execCommand("copy"); } catch (err2) {}
+              document.body.removeChild(ta);
+            }
+            return;
+          }
+          var retryBtn = e.target && e.target.closest ? e.target.closest(".outbox-retry") : null;
+          if (retryBtn) {
+            var rid = String(retryBtn.getAttribute("data-outbox-id") || "");
+            pendingOutbox.forEach(function (m) {
+              if (String(m.id) === rid && m.status === "error") m.status = "queued";
+            });
+            renderPendingOutbox();
+            sendQueuedOutbox();
+            return;
+          }
+          var removeBtn = e.target && e.target.closest ? e.target.closest(".outbox-remove") : null;
+          if (removeBtn) {
+            removeOutboxMessage(removeBtn.getAttribute("data-outbox-id") || "");
+            return;
+          }
+          var sendBtn = e.target && e.target.closest ? e.target.closest(".pending-send") : null;
+          if (sendBtn) {
+            sendPendingDraft();
+            return;
+          }
+          var regenBtn = e.target && e.target.closest ? e.target.closest(".pending-regen") : null;
+          if (regenBtn) {
+            triggerGeneration();
+            return;
+          }
+          var cancelBtn = e.target && e.target.closest ? e.target.closest(".pending-cancel") : null;
+          if (cancelBtn) {
+            setPendingDraft("", false);
+            renderPendingDraft();
+            clearPendingDraftOnServer();
+            return;
+          }
+          var copyBtn = e.target && e.target.closest ? e.target.closest(".pending-copy") : null;
+          if (copyBtn) {
+            var txt = pendingDraftText || "";
+            if (!txt) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(txt).catch(function () {});
+            } else if (textarea) {
+              textarea.value = txt;
+              textarea.select();
+              try { document.execCommand("copy"); } catch (err) {}
+            }
+            return;
+          }
+          var btn = e.target && e.target.closest ? e.target.closest(".msg-toggle") : null;
+          if (!btn) return;
+          var mode = btn.getAttribute("data-mode") || "original";
+          var key = decodeURIComponent(btn.getAttribute("data-key") || "");
+          var textEl = btn.parentElement ? btn.parentElement.querySelector(".msg .msg-text") : null;
+          if (!textEl) return;
+          var original = decodeURIComponent(btn.getAttribute("data-original") || "");
+          var summary = decodeURIComponent(btn.getAttribute("data-summary") || "");
+          if (!key) {
+            var wrap = btn.closest(".msg-wrap");
+            var dir = (wrap && wrap.classList.contains("in")) ? "in" : "out";
+            key = dir + "|" + original;
+            btn.setAttribute("data-key", escAttr(key));
+          }
+          if (mode === "summary") {
+            textEl.textContent = original;
+            btn.setAttribute("data-mode", "original");
+            btn.textContent = tr("processing.showSummary", "Show summary");
+            if (key) summaryModeByKey[key] = "original";
+          } else {
+            textEl.textContent = summary || original;
+            btn.setAttribute("data-mode", "summary");
+            btn.textContent = tr("processing.showOriginal", "Show original");
+            if (key) summaryModeByKey[key] = "summary";
+          }
+        });
+      }
+
+      function pollOnce() {
+        if (!itemId) return;
+        fetch(statusUrl + "?item_id=" + encodeURIComponent(itemId), {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { "Accept": "application/json" }
+        }).then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.ok) return;
+            if (data.status === "running") {
+              setGenUiRunning();
+              return;
+            }
+            if (data.status === "done") {
+              setGenUiIdle();
+              if (typeof data.draft_text === "string") {
+                setPendingDraft(data.draft_text, !!data.draft_requires_confirmation);
+                renderPendingDraft();
+              }
+              replyPollOnce();
+              stopPolling();
+              return;
+            }
+            if (data.status === "error") {
+              setGenUiError();
+              if (data.error && data.error.indexOf("ESCALATE_OWNER:") !== 0) {
+                alert(tr("alerts.genError", "Generation error") + ": " + data.error);
+              } else {
+                setReplyIndicator({
+                  status: "error",
+                  reply_pending: false,
+                  error: data.error || "ESCALATE_OWNER"
+                });
+              }
+              stopPolling();
+              return;
+            }
+            setGenUiIdle();
+            stopPolling();
+          })
+          .catch(function () { /* silent */ });
+      }
+
+      function startPolling() {
+        stopPolling();
+        pollOnce();
+        pollTimer = setInterval(pollOnce, 2000);
+      }
+
+      function stopPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+      }
+      function evalPollOnce() {
+        if (!itemId) return;
+        fetch(evalStatusUrl + "?item_id=" + encodeURIComponent(itemId), {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { "Accept": "application/json" }
+        }).then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.ok) return;
+            setEvalIndicator(data);
+            if (data.status === "running") {
+              setEvalUiRunning();
+              return;
+            }
+            if (data.status === "done") {
+              setEvalUiIdle();
+              if (evalTextEl && typeof data.evaluation_text === "string") {
+                evalTextEl.textContent = data.evaluation_text;
+              }
+              showEvaluationButton(!!data.has_evaluation);
+              stopEvalPolling();
+              return;
+            }
+            if (data.status === "error") {
+              setEvalUiError();
+              if (data.error) alert(tr("alerts.evalError", "Evaluation error") + ": " + data.error);
+              stopEvalPolling();
+              return;
+            }
+            setEvalUiIdle();
+            showEvaluationButton(!!data.has_evaluation);
+            stopEvalPolling();
+          })
+          .catch(function () { /* silent */ });
+      }
+      function startEvalPolling() {
+        stopEvalPolling();
+        evalPollOnce();
+        evalPollTimer = setInterval(evalPollOnce, 2000);
+      }
+      function stopEvalPolling() {
+        if (evalPollTimer) clearInterval(evalPollTimer);
+        evalPollTimer = null;
+      }
+      function replyPollOnce() {
+        if (!itemId) return;
+        fetch(replyStatusUrl + "?item_id=" + encodeURIComponent(itemId), {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { "Accept": "application/json" }
+        }).then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.ok) return;
+            if (Array.isArray(data.conversation)) renderConversation(data.conversation);
+            updateLeadUi(data);
+            setReplyIndicator(data);
+            if (typeof data.draft_text === "string") {
+              setPendingDraft(data.draft_text, !!data.draft_requires_confirmation);
+              renderPendingDraft();
+            }
+            if (data.status === "running") {
+              typingForceVisibleUntil = Date.now() + 900;
+              if (!replyPollTimer) {
+                startReplyPolling(true);
+                return;
+              }
+              showTyping();
+              return;
+            }
+            if (data.reply_pending) {
+              hideTyping();
+              if (!replyPollTimer) startReplyPolling(false);
+              return;
+            }
+            hideTyping();
+            stopReplyPolling();
+            if (data.status === "error" && data.error) {
+              if (data.error.indexOf("ESCALATE_OWNER:") !== 0) {
+                alert(tr("alerts.replyError", "Auto-reply error") + ": " + data.error);
+              }
+            }
+          })
+          .catch(function () { /* silent */ });
+      }
+      function startReplyPolling(showTypingNow) {
+        if (showTypingNow === undefined) showTypingNow = true;
+        if (replyIdlePollTimer) {
+          clearInterval(replyIdlePollTimer);
+          replyIdlePollTimer = null;
+        }
+        if (replyPollTimer) clearInterval(replyPollTimer);
+        replyPollTimer = null;
+        if (showTypingNow) {
+          typingForceVisibleUntil = Date.now() + 1400;
+          showTyping();
+        }
+        replyPollOnce();
+        var minDelay = parseInt((delayMin && delayMin.value) || "0", 10) || 0;
+        var maxDelay = parseInt((delayMax && delayMax.value) || "0", 10) || 0;
+        var pollMs = (minDelay === 0 && maxDelay === 0) ? 350 : 1800;
+        replyPollTimer = setInterval(replyPollOnce, pollMs);
+      }
+      function startIdleReplyPolling() {
+        if (replyPollTimer || replyIdlePollTimer) return;
+        replyIdlePollTimer = setInterval(replyPollOnce, 2500);
+      }
+      function stopReplyPolling() {
+        if (replyPollTimer) clearInterval(replyPollTimer);
+        replyPollTimer = null;
+        startIdleReplyPolling();
+      }
+
+      // On load: if generation already running for this chat, keep showing it.
+      setPendingDraft(
+        decodeURIComponent(chatBox.getAttribute("data-draft-text") || ""),
+        (chatBox.getAttribute("data-draft-confirm") || "0") === "1"
+      );
+      renderPendingDraft();
+      var initialStatus = chatBox.getAttribute("data-gen-status");
+      if (initialStatus === "running") startPolling();
+      var initialEvalStatus = chatBox.getAttribute("data-eval-status");
+      var initialEvalStage = chatBox.getAttribute("data-eval-stage") || "";
+      setEvalIndicator({ status: initialEvalStatus || "", stage: initialEvalStage, error: "" });
+      if (initialEvalStatus === "running") startEvalPolling();
+      // Always open chat at the end of conversation.
+      if (chatHistory && initialScrollToEndPending) {
+        scrollBottom(chatHistory);
+        initialScrollToEndPending = false;
+      }
+      // If auto-reply was already running (e.g. page reopened), recover polling.
+      replyPollOnce();
+      startIdleReplyPolling();
+      if (evalViewBtn) {
+        evalViewBtn.dataset.hasEval = evalViewBtn.style.display === "none" ? "0" : "1";
+      }
+      applyRoleMode(roleMode());
+      if (delayMin && delayMax) {
+        updateDelayLabel(delayMin.value, delayMax.value);
+        delayMin.addEventListener("input", function () {
+          var p = normalizeDelayPair(delayMin.value, delayMax.value);
+          delayMin.value = String(p.min);
+          delayMax.value = String(p.max);
+          saveTimer(p.min, p.max);
+        });
+        delayMax.addEventListener("input", function () {
+          var p = normalizeDelayPair(delayMin.value, delayMax.value);
+          delayMin.value = String(p.min);
+          delayMax.value = String(p.max);
+          saveTimer(p.min, p.max);
+        });
+      }
+      if (swapRoleBtn) {
+        swapRoleBtn.addEventListener("click", function () {
+          var next = roleMode() === "firm" ? "agent" : "firm";
+          setRoleMode(next);
+          applyRoleMode(next);
+        });
+      }
+
+      genBtn.addEventListener("click", function () {
+        triggerGeneration();
+      });
+      if (evalBtn) {
+        evalBtn.addEventListener("click", function () {
+          if (!itemId || evalBtn.disabled) return;
+          setEvalUiRunning();
+          var fd = new FormData();
+          fd.append("item_id", itemId);
+          fetch(evalStartUrl, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "X-CSRFToken": getCsrfToken() },
+            body: fd
+          }).then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data || !data.ok) {
+                setEvalUiIdle();
+                alert(tr("alerts.startEvalFailed", "Failed to start evaluation."));
+                return;
+              }
+              setEvalIndicator({ status: data.status || "running", stage: data.stage || "parsing", error: "" });
+              startEvalPolling();
+            })
+            .catch(function () {
+              setEvalUiIdle();
+              alert(tr("alerts.startEvalFailed", "Failed to start evaluation."));
+            });
+        });
+      }
+
+      if (chatForm) {
+        chatForm.addEventListener("submit", function (e) {
+          var textVal = (textarea && textarea.value) ? textarea.value.trim() : "";
+          // Keep simple checkbox-only updates as normal POST.
+          if (!textVal) return;
+          e.preventDefault();
+          var side = (messageSide && messageSide.value === "in") ? "in" : "out";
+          addOutboxMessage(textVal, side);
+          sendQueuedOutbox();
+          if (textarea) textarea.value = "";
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
+
