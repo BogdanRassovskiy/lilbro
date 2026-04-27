@@ -12,6 +12,7 @@ if [[ -f .venv/bin/activate ]]; then
 fi
 
 echo "→ python -m playwright install chromium"
+echo "(нужен полный Chromium, не ставьте только headless-shell: без флага --only-shell)"
 python3 -m playwright install chromium
 
 echo ""

@@ -10,10 +10,15 @@ def chromium_launch_kwargs():
     """
     Аргументы для sync_playwright().chromium.launch(...).
 
-    На Linux без настоящего дисплея процесс часто падает без --no-sandbox /
-    --disable-dev-shm-usage (ошибка «browser has been closed» сразу после launch).
+    По умолчанию Playwright 1.57+ в headless поднимает отдельный бинарник
+    chrome-headless-shell — на части Linux/VPS он сразу завершается («browser has been closed»).
+    Явный channel=\"chromium\" включает полный Chrome-for-Testing (новый headless), обычно стабильнее.
 
-    PLAYWRIGHT_CHROMIUM_CHANNEL — опционально, например \"chrome\" если установлен системный Chrome.
+    Переменные окружения:
+    - PLAYWRIGHT_CHROMIUM_CHANNEL — переопределить канал (например chrome / msedge).
+    - PLAYWRIGHT_HEADLESS_SHELL=1 — не задавать channel (оставить дефолт Playwright = shell).
+
+    На Linux без дисплея часто нужны --no-sandbox и --disable-dev-shm-usage.
     """
     args = [
         "--disable-dev-shm-usage",
@@ -28,7 +33,17 @@ def chromium_launch_kwargs():
         )
 
     kwargs = {"headless": True, "args": args}
+
+    use_shell = os.environ.get("PLAYWRIGHT_HEADLESS_SHELL", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
     channel = (os.environ.get("PLAYWRIGHT_CHROMIUM_CHANNEL") or "").strip()
+
     if channel:
         kwargs["channel"] = channel
+    elif not use_shell:
+        kwargs["channel"] = "chromium"
+
     return kwargs
