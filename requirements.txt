@@ -1,4 +1,6 @@
 Django>=2.2,<3
+# После pip install: ./install_playwright.sh  (или: python -m playwright install chromium)
+# На Linux без GUI при нехватке библиотек: sudo python -m playwright install-deps chromium
 playwright>=1.40
 trafilatura
 aiogram>=3,<4

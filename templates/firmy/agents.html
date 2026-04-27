@@ -3,14 +3,17 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Агенты</title>
   <style>
     :root { --bg:#0f1218; --surface:#1a1f2a; --border:#2a3344; --text:#e8ecf3; --muted:#8b95a8; --accent:#5b8def; }
-    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); padding:1.5rem; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); padding:1.5rem; -webkit-text-size-adjust:100%; }
     .wrap { max-width:72rem; margin:0 auto; }
-    .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
-    .btn { display:inline-block; padding:0.55rem 0.9rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); text-decoration:none; font-weight:600; }
+    .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; gap:0.65rem; flex-wrap:wrap; }
+    .top-title { color:var(--muted); flex:1; text-align:center; min-width:8rem; }
+    .top-toolbar { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+    .btn { display:inline-block; padding:0.55rem 0.9rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); text-decoration:none; font-weight:600; touch-action:manipulation; }
     .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.9rem; }
     .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0.9rem; min-height:170px; display:flex; flex-direction:column; justify-content:space-between; }
     .avatar { width:38px; height:38px; border-radius:50%; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:20px; background:#141a25; }
@@ -20,16 +23,80 @@
     .btn.small { padding:0.35rem 0.6rem; font-size:0.82rem; }
     .selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(91,141,239,0.4); }
     .plus { font-size:38px; color:var(--muted); line-height:1; }
+
+    @media (max-width: 640px) {
+      body { padding: 0.75rem 0.85rem calc(0.75rem + env(safe-area-inset-bottom)); padding-left: max(0.85rem, env(safe-area-inset-left)); padding-right: max(0.85rem, env(safe-area-inset-right)); }
+      .top {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        align-items: stretch;
+        gap: 0.55rem;
+        margin-bottom: 0.85rem;
+      }
+      .top-title {
+        grid-column: 1;
+        grid-row: 1;
+        text-align: center;
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--text);
+        min-width: 0;
+        flex: unset;
+      }
+      .top > a.btn {
+        grid-column: 1;
+        grid-row: 2;
+        justify-self: start;
+        max-width: 100%;
+      }
+      .top-toolbar {
+        grid-column: 1;
+        grid-row: 3;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+      .top-toolbar .btn {
+        flex: 1 1 auto;
+        min-width: min(100%, 11rem);
+        text-align: center;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+      }
+      .card {
+        min-height: 0;
+        padding: 0.85rem;
+      }
+      .card.plus-card { min-height: 120px; }
+      .name, .meta { overflow-wrap: anywhere; }
+      .actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+      .actions form {
+        width: 100%;
+      }
+      .actions .btn.small {
+        width: 100%;
+        text-align: center;
+        padding: 0.55rem 0.65rem;
+        font-size: 0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="top">
       <a class="btn" href="/" data-i18n="agents.toBase">← База</a>
-      <div style="color:var(--muted);" data-i18n="agents.title">Выбор агента</div>
-      <div style="display:flex; gap:0.5rem; align-items:center;">
+      <div class="top-title" data-i18n="agents.title">Выбор агента</div>
+      <div class="top-toolbar">
         <span style="font-size:0.78rem;color:#8b95a8;" data-i18n="lang.label">Язык</span>
-        <select data-lang-switch style="background:#0f1218;color:#e8ecf3;border:1px solid #2a3344;border-radius:6px;padding:0.15rem 0.3rem;font-size:0.78rem;">
+        <select data-lang-switch style="background:#0f1218;color:#e8ecf3;border:1px solid #2a3344;border-radius:6px;padding:0.15rem 0.3rem;font-size:0.78rem;max-width:100%;">
           <option value="ru" data-i18n="lang.ru">Русский</option>
           <option value="cs" data-i18n="lang.cs">Čeština</option>
         </select>
@@ -77,7 +144,7 @@
           </div>
         </div>
       {% endfor %}
-      <a class="card" href="{% url 'firmy:agent_new' %}" style="text-decoration:none; color:inherit; align-items:center; justify-content:center; display:flex;">
+      <a class="card plus-card" href="{% url 'firmy:agent_new' %}" style="text-decoration:none; color:inherit; align-items:center; justify-content:center; display:flex;">
         <div style="text-align:center;">
           <div class="plus">+</div>
           <div class="meta" style="margin-top:0.5rem;">Создать нового агента</div>
