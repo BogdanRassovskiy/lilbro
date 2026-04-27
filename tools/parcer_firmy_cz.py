@@ -149,7 +149,7 @@ def _merge_contacts(phones, emails, *text_blobs):
 
 
 def _detail_page_data(page):
-    """tel:/mailto:, regex по тексту, ссылка «Web» (официальный сайт / часто соцсеть)."""
+    """tel:/mailto:, regex по тексту, ссылка «Web», краткое описание с профиля firmy.cz."""
     data = page.evaluate(
         """
         () => {
@@ -166,20 +166,58 @@ def _detail_page_data(page):
             if (u) emails.add(u);
           });
           let website = null;
-          // Strict selector from Firmy detail page for official website field.
-          // Example:
-          // <a class="value detailWebUrl url companyUrl" href="https://...">...</a>
           const webAnchor = document.querySelector('a.detailWebUrl.companyUrl[href], a.value.detailWebUrl.url.companyUrl[href]');
           if (webAnchor) {
             const h = (webAnchor.getAttribute('href') || '').trim();
             if (h && /^https?:\\/\\//i.test(h)) website = h;
           }
           const body = document.body ? (document.body.innerText || '') : '';
+
+          function firmyAbout() {
+            const og = document.querySelector('meta[property="og:description"]');
+            if (og) {
+              const c = (og.getAttribute('content') || '').trim();
+              if (c.length > 15) return c.slice(0, 4000);
+            }
+            const md = document.querySelector('meta[name="description"]');
+            if (md) {
+              const c = (md.getAttribute('content') || '').trim();
+              if (c.length > 15) return c.slice(0, 4000);
+            }
+            const sels = [
+              '[class*="detailDescription"]',
+              '[class*="DetailDescription"]',
+              '[class*="companyDescription"]',
+              '.detail-description',
+              '[itemprop="description"]',
+              'article .text',
+              'main article p'
+            ];
+            for (const sel of sels) {
+              try {
+                const el = document.querySelector(sel);
+                if (!el) continue;
+                const t = (el.innerText || '').trim();
+                if (t.length > 40 && t.length < 6000) return t.slice(0, 4000);
+              } catch (e) { continue; }
+            }
+            const main = document.querySelector('main') || document.body;
+            if (main) {
+              const ps = main.querySelectorAll('p');
+              for (const p of ps) {
+                const t = (p.innerText || '').trim();
+                if (t.length > 80 && t.length < 4000) return t;
+              }
+            }
+            return '';
+          }
+
           return {
             phones: Array.from(phones),
             emails: Array.from(emails),
             body: body.slice(0, 80000),
-            website: website
+            website: website,
+            about: firmyAbout()
           };
         }
         """
@@ -188,6 +226,7 @@ def _detail_page_data(page):
     raw_emails = data.get("emails") or []
     body = data.get("body") or ""
     website = (data.get("website") or "").strip()
+    about = (data.get("about") or "").strip()
     p = {_normalize_phone(x) for x in raw_phones if x}
     p.discard("")
     e = {(x or "").strip().lower() for x in raw_emails if x}
@@ -196,7 +235,9 @@ def _detail_page_data(page):
     web = _strip_tracking_params(website) if website else ""
     if len(web) > 2048:
         web = web[:2048]
-    return phones, emails, web
+    if len(about) > 12000:
+        about = about[:12000]
+    return phones, emails, web, about
 
 
 def fetch_listings(query: str, limit: int):
@@ -246,9 +287,9 @@ def fetch_listings(query: str, limit: int):
                         seen.add(m[1]);
                         let card = a.closest('article') || a.closest('li') || a.parentElement;
                         if (card && card !== a) {
-                          for (let i = 0; i < 4 && card; i++) {
+                          for (let i = 0; i < 8 && card; i++) {
                             const t = (card.innerText || '').trim();
-                            if (t.length > 40) break;
+                            if (t.length > 72) break;
                             card = card.parentElement;
                           }
                         }
@@ -298,16 +339,30 @@ def fetch_listings(query: str, limit: int):
 
                 random_delay()
                 website_url = ""
+                about = ""
                 try:
                     page.goto(href, wait_until="domcontentloaded", timeout=60000)
                     random_delay()
                     page.wait_for_timeout(2000)
                     _dismiss_seznam_consent(page)
                     page.wait_for_timeout(1500)
-                    dp, de, website_url = _detail_page_data(page)
+                    dp, de, website_url, about = _detail_page_data(page)
                     phones, emails = _merge_contacts(set(phones), set(emails), card, "\n".join(dp), "\n".join(de))
                 except Exception:
-                    pass
+                    website_url = ""
+                    about = ""
+
+                listing_card = card
+                card_text_final = listing_card
+                if about:
+                    ab = about.strip()
+                    if ab:
+                        if listing_card and listing_card.strip() in ab:
+                            card_text_final = ab
+                        elif listing_card:
+                            card_text_final = (listing_card + "\n\n" + ab).strip()
+                        else:
+                            card_text_final = ab
 
                 enriched.append(
                     {
@@ -316,6 +371,7 @@ def fetch_listings(query: str, limit: int):
                         "phones": phones,
                         "emails": emails,
                         "website_url": website_url or "",
+                        "card_text": card_text_final,
                     }
                 )
         finally:
@@ -331,6 +387,7 @@ def fetch_listings(query: str, limit: int):
         if not m:
             continue
         card = row.get("card") or ""
+        card_text = (item.get("card_text") or card).strip()
         category, address = _parse_card(card)
         phones = item.get("phones") or []
         emails = item.get("emails") or []
@@ -343,7 +400,7 @@ def fetch_listings(query: str, limit: int):
                 "detail_url": href,
                 "category": category,
                 "address": address,
-                "card_text": card,
+                "card_text": card_text,
                 "phones": "\n".join(phones),
                 "emails": "\n".join(emails),
                 "website_url": web,

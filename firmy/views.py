@@ -15,6 +15,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -477,6 +478,7 @@ def _apply_lost_post_actions(
             "agent_name": interviewer.name,
             "text": signoff_text,
             "summary": signoff_summary,
+            "released": True,
         }
     )
     item.conversation_json = json.dumps(convo, ensure_ascii=False)
@@ -518,6 +520,20 @@ def _is_ajax_json(request) -> bool:
     )
 
 
+def _conversation_visible_to_client(convo: list) -> list:
+    """Исходящие с released=False скрыты у клиента до подтверждения агентом."""
+    if not isinstance(convo, list):
+        return []
+    out = []
+    for m in convo:
+        if not isinstance(m, dict):
+            continue
+        if m.get("dir") == "out" and not m.get("released", True):
+            continue
+        out.append(m)
+    return out
+
+
 def _is_item_running(item: FirmyProcessingItem, interviewer: FirmyAgent) -> bool:
     return bool(interviewer.processing_enabled and not item.paused_individual)
 
@@ -554,7 +570,7 @@ def _enqueue_auto_action_for_item(item: FirmyProcessingItem, interviewer: FirmyA
             reply_started_at=timezone.now(),
             reply_finished_at=None,
         )
-        t = threading.Thread(target=_run_auto_reply_task, args=(item.id, interviewer.id, True), daemon=True)
+        t = threading.Thread(target=_run_auto_reply_task, args=(item.id, interviewer.id), daemon=True)
         t.start()
 
 
@@ -850,11 +866,20 @@ def premises(request):
 
 
 @require_http_methods(["GET", "POST"])
-def processing(request):
+def processing(request, client_item_id=None):
     def calc_contact_flags(convo):
         was_contacted = any((m.get("dir") == "out") for m in convo if isinstance(m, dict))
         was_answered = any((m.get("dir") == "in") for m in convo if isinstance(m, dict))
         return was_contacted, was_answered
+
+    def pr_redirect(page_n, item_id=None):
+        """Редирект после POST: окно клиента → только страница client/<id>, иначе основной список."""
+        if client_item_id is not None:
+            return redirect(reverse("firmy:processing_client", args=[client_item_id]))
+        base = reverse("firmy:processing")
+        if item_id is not None:
+            return redirect("{}?page={}&item={}".format(base, page_n, item_id))
+        return redirect("{}?page={}".format(base, page_n))
 
     interviewer = _selected_interviewer_agent(request)
     if not interviewer:
@@ -869,35 +894,45 @@ def processing(request):
     if request.method == "POST":
         form_type = (request.POST.get("form_type") or "").strip()
 
+        if client_item_id is not None and form_type in (
+            "bulk",
+            "toggle_global",
+            "delete_one",
+            "clear_chat",
+            "toggle_lead_lost",
+        ):
+            messages.error(request, "Это действие недоступно в окне ответа от лица клиента.")
+            return pr_redirect(page_num)
+
         if form_type == "bulk":
             action = (request.POST.get("action") or "").strip()
             ids = request.POST.getlist("selected")
             item_ids = [int(x) for x in ids if str(x).isdigit()]
             if not item_ids:
                 messages.error(request, "Ничего не выбрано.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             if action == "delete":
                 scope = qs.filter(id__in=item_ids)
                 cnt = scope.count()
                 scope.delete()
                 messages.success(request, "Удалено из обработки: {}.".format(cnt))
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             messages.error(request, "Неизвестное действие.")
-            return redirect("{}?page={}".format(request.path, page_num))
+            return pr_redirect(page_num)
 
         if form_type == "delete_one":
             item_id_raw = request.POST.get("item_id")
             if not (item_id_raw and str(item_id_raw).isdigit()):
                 messages.error(request, "Не выбран элемент для удаления.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item_id = int(item_id_raw)
             obj = qs.filter(pk=item_id).first()
             if not obj:
                 messages.error(request, "Элемент не найден (возможно уже удалён).")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             obj.delete()
             messages.success(request, "Удалено из обработки.")
-            return redirect("{}?page={}".format(request.path, page_num))
+            return pr_redirect(page_num)
 
         if form_type == "toggle_global":
             interviewer.processing_enabled = not interviewer.processing_enabled
@@ -908,18 +943,18 @@ def processing(request):
                 messages.success(request, "Глобальный режим: продолжено.")
             else:
                 messages.success(request, "Глобальный режим: пауза.")
-            return redirect("{}?page={}".format(request.path, page_num))
+            return pr_redirect(page_num)
 
         if form_type == "toggle_item":
             item_id_raw = request.POST.get("item_id")
             if not (item_id_raw and str(item_id_raw).isdigit()):
                 messages.error(request, "Не выбран чат.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item_id = int(item_id_raw)
             item = qs.filter(pk=item_id).first()
             if not item:
                 messages.error(request, "Чат не найден.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item.paused_individual = not item.paused_individual
             item.save(update_fields=["paused_individual", "updated_at"])
             if not item.paused_individual and interviewer.processing_enabled:
@@ -927,7 +962,83 @@ def processing(request):
                 messages.success(request, "Чат продолжен.")
             else:
                 messages.success(request, "Чат поставлен на паузу.")
-            return redirect("{}?page={}&item={}".format(request.path, page_num, item_id))
+            return pr_redirect(page_num, item_id)
+
+        if form_type == "set_auto_reply_mode":
+            item_id_raw = request.POST.get("item_id")
+            if not (item_id_raw and str(item_id_raw).isdigit()):
+                if _is_ajax_json(request):
+                    return JsonResponse({"ok": False, "error": "bad_request"}, status=400)
+                messages.error(request, "Не выбран чат.")
+                return pr_redirect(page_num)
+            item_id = int(item_id_raw)
+            item = qs.filter(pk=item_id).first()
+            if not item:
+                if _is_ajax_json(request):
+                    return JsonResponse({"ok": False, "error": "not_found"}, status=404)
+                messages.error(request, "Чат не найден.")
+                return pr_redirect(page_num)
+            imm_raw = (request.POST.get("auto_reply_send_immediate") or "").strip().lower()
+            item.auto_reply_send_immediate = imm_raw in ("1", "true", "yes", "on")
+            item.save(update_fields=["auto_reply_send_immediate", "updated_at"])
+            if _is_ajax_json(request):
+                return JsonResponse({"ok": True, "auto_reply_send_immediate": item.auto_reply_send_immediate})
+            return pr_redirect(page_num, item_id)
+
+        if form_type == "toggle_lead_lost":
+            item_id_raw = request.POST.get("item_id")
+            if not (item_id_raw and str(item_id_raw).isdigit()):
+                if _is_ajax_json(request):
+                    return JsonResponse({"ok": False, "error": "bad_request"}, status=400)
+                messages.error(request, "Не выбран чат.")
+                return pr_redirect(page_num)
+            item_id = int(item_id_raw)
+            item = qs.filter(pk=item_id).first()
+            if not item:
+                if _is_ajax_json(request):
+                    return JsonResponse({"ok": False, "error": "not_found"}, status=404)
+                messages.error(request, "Чат не найден.")
+                return pr_redirect(page_num)
+            lost_flag = request.POST.get("lost") in ("1", "on", "true", "yes")
+            try:
+                convo = json.loads(item.conversation_json or "[]")
+                if not isinstance(convo, list):
+                    convo = []
+            except Exception:
+                convo = []
+            convo, _ = _ensure_conversation_summaries(convo, interviewer)
+            prev_lead_state = (item.lead_state or "").strip()
+
+            if lost_flag:
+                item.lead_state = "lost"
+            else:
+                item.lead_state = ""
+                item.do_not_contact = False
+                item.paused_individual = False
+
+            convo, lost_fields = _apply_lost_post_actions(item, convo, interviewer, prev_lead_state=prev_lead_state)
+
+            save_fields = {"lead_state", "updated_at"}
+            save_fields.update(lost_fields)
+            if not lost_flag:
+                save_fields.update({"do_not_contact", "paused_individual"})
+
+            item.save(update_fields=list(dict.fromkeys(save_fields)))
+
+            if _is_ajax_json(request):
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "lead_state": item.lead_state or "",
+                        "do_not_contact": item.do_not_contact,
+                        "paused_individual": item.paused_individual,
+                        "response_type": _safe_json_list(item.response_type),
+                        "communication_style": _safe_json_list(item.communication_style),
+                        "conversation": convo,
+                    }
+                )
+            messages.success(request, "Статус лида обновлён.")
+            return pr_redirect(page_num, item_id)
 
         if form_type == "set_timer":
             item_id_raw = request.POST.get("item_id")
@@ -935,14 +1046,14 @@ def processing(request):
                 if _is_ajax_json(request):
                     return JsonResponse({"ok": False, "error": "bad_request"}, status=400)
                 messages.error(request, "Не выбран чат.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item_id = int(item_id_raw)
             item = qs.filter(pk=item_id).first()
             if not item:
                 if _is_ajax_json(request):
                     return JsonResponse({"ok": False, "error": "not_found"}, status=404)
                 messages.error(request, "Чат не найден.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             dmin, dmax = _normalize_delay_pair(
                 request.POST.get("reply_delay_min_minutes"),
                 request.POST.get("reply_delay_max_minutes"),
@@ -953,7 +1064,7 @@ def processing(request):
             if _is_ajax_json(request):
                 return JsonResponse({"ok": True, "min": dmin, "max": dmax})
             messages.success(request, "Таймер ответа обновлен.")
-            return redirect("{}?page={}&item={}".format(request.path, page_num, item_id))
+            return pr_redirect(page_num, item_id)
 
         if form_type == "clear_chat":
             item_id_raw = request.POST.get("item_id")
@@ -961,14 +1072,14 @@ def processing(request):
                 if _is_ajax_json(request):
                     return JsonResponse({"ok": False, "error": "bad_request"}, status=400)
                 messages.error(request, "Не выбран чат.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item_id = int(item_id_raw)
             item = qs.filter(pk=item_id).first()
             if not item:
                 if _is_ajax_json(request):
                     return JsonResponse({"ok": False, "error": "not_found"}, status=404)
                 messages.error(request, "Чат не найден.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
 
             item.conversation_json = "[]"
             item.was_contacted = False
@@ -1002,22 +1113,25 @@ def processing(request):
             if _is_ajax_json(request):
                 return JsonResponse({"ok": True, "status": "cleared"})
             messages.success(request, "Переписка очищена.")
-            return redirect("{}?page={}&item={}".format(request.path, page_num, item_id))
+            return pr_redirect(page_num, item_id)
 
         if form_type == "chat":
             item_id_raw = request.POST.get("item_id")
             if not (item_id_raw and str(item_id_raw).isdigit()):
                 messages.error(request, "Не выбран элемент для переписки.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item_id = int(item_id_raw)
+            if client_item_id is not None and item_id != int(client_item_id):
+                messages.error(request, "Неверный чат.")
+                return pr_redirect(page_num)
             item = get_object_or_404(FirmyProcessingItem, pk=item_id, assigned_agent=interviewer)
 
             msg_text = (request.POST.get("message_text") or "").strip()
             message_side = (request.POST.get("message_side") or "out").strip().lower()
             if message_side not in ("in", "out"):
                 message_side = "out"
-            item.do_not_contact = request.POST.get("do_not_contact") in ("1", "on", "true", "yes")
-
+            if client_item_id is not None:
+                message_side = "in"
             try:
                 convo = json.loads(item.conversation_json or "[]")
                 if not isinstance(convo, list):
@@ -1028,6 +1142,10 @@ def processing(request):
 
             if msg_text:
                 msg_summary = _summarize_message_for_agent(msg_text, interviewer, message_side)
+                if message_side == "out":
+                    for m in convo:
+                        if isinstance(m, dict) and m.get("dir") == "out" and m.get("released") is False:
+                            m["released"] = True
                 msg_obj = {
                     "ts": timezone.now().isoformat(),
                     "dir": message_side,
@@ -1037,6 +1155,7 @@ def processing(request):
                 if message_side == "out":
                     msg_obj["agent_id"] = interviewer.id
                     msg_obj["agent_name"] = interviewer.name
+                    msg_obj["released"] = True
                 convo.append(msg_obj)
                 # After sending a real message, clear any generated draft text.
                 item.draft_text = ""
@@ -1054,7 +1173,7 @@ def processing(request):
                 item.reply_started_at = timezone.now()
                 item.reply_finished_at = None
 
-            update_fields = ["was_contacted", "was_answered", "do_not_contact", "conversation_json", "updated_at"]
+            update_fields = ["was_contacted", "was_answered", "conversation_json", "updated_at"]
             if msg_text:
                 update_fields.extend(["draft_text", "draft_requires_confirmation"])
             if msg_text and message_side == "in" and _is_item_running(item, interviewer):
@@ -1063,26 +1182,35 @@ def processing(request):
             item.save(update_fields=list(dict.fromkeys(update_fields)))
 
             if msg_text and message_side == "in" and _is_item_running(item, interviewer):
-                t = threading.Thread(target=_run_auto_reply_task, args=(item.id, interviewer.id, True), daemon=True)
+                t = threading.Thread(target=_run_auto_reply_task, args=(item.id, interviewer.id), daemon=True)
                 t.start()
 
             if _is_ajax_json(request):
+                resp_convo = convo
+                resp_draft = item.draft_text or ""
+                resp_draft_conf = bool(item.draft_requires_confirmation)
+                if client_item_id is not None:
+                    resp_convo = _conversation_visible_to_client(convo)
+                    resp_draft = ""
+                    resp_draft_conf = False
                 return JsonResponse(
                     {
                         "ok": True,
                         "status": "saved",
                         "reply_status": item.reply_status,
                         "reply_pending": bool(item.reply_started_at and item.reply_finished_at is None),
-                        "draft_text": item.draft_text or "",
-                        "draft_requires_confirmation": bool(item.draft_requires_confirmation),
-                        "conversation": convo,
+                        "draft_text": resp_draft,
+                        "draft_requires_confirmation": resp_draft_conf,
+                        "conversation": resp_convo,
                         "lead_state": item.lead_state or "",
+                        "do_not_contact": item.do_not_contact,
+                        "paused_individual": item.paused_individual,
                         "response_type": _safe_json_list(item.response_type),
                         "communication_style": _safe_json_list(item.communication_style),
                     }
                 )
             messages.success(request, "Карточка обновлена.")
-            return redirect("{}?page={}&item={}".format(request.path, page_num, item_id))
+            return pr_redirect(page_num, item_id)
 
         if form_type == "clear_draft":
             item_id_raw = request.POST.get("item_id")
@@ -1090,34 +1218,50 @@ def processing(request):
                 if _is_ajax_json(request):
                     return JsonResponse({"ok": False, "error": "bad_request"}, status=400)
                 messages.error(request, "Не выбран чат.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item_id = int(item_id_raw)
             item = qs.filter(pk=item_id).first()
             if not item:
                 if _is_ajax_json(request):
                     return JsonResponse({"ok": False, "error": "not_found"}, status=404)
                 messages.error(request, "Чат не найден.")
-                return redirect("{}?page={}".format(request.path, page_num))
+                return pr_redirect(page_num)
             item.draft_text = ""
             item.draft_requires_confirmation = False
             item.save(update_fields=["draft_text", "draft_requires_confirmation", "updated_at"])
             if _is_ajax_json(request):
                 return JsonResponse({"ok": True, "status": "cleared"})
-            return redirect("{}?page={}&item={}".format(request.path, page_num, item_id))
+            return pr_redirect(page_num, item_id)
 
         messages.error(request, "Неизвестная форма.")
-        return redirect("{}?page={}".format(request.path, page_num))
+        return pr_redirect(page_num)
 
-    paginator = Paginator(qs, 50)
-    page_obj = paginator.get_page(page_num)
+    try:
+        page_num = int(page_num)
+    except Exception:
+        page_num = 1
 
-    selected_item = None
-    selected_item_id = request.GET.get("item")
-    chat_open = bool(selected_item_id and str(selected_item_id).isdigit())
-    if selected_item_id and str(selected_item_id).isdigit():
-        selected_item = qs.filter(pk=int(selected_item_id)).first()
-    if not selected_item and page_obj.object_list:
-        selected_item = page_obj.object_list[0]
+    client_mode = client_item_id is not None
+
+    if client_mode:
+        selected_item = qs.filter(pk=client_item_id).first()
+        if not selected_item:
+            messages.error(request, "Чат не найден.")
+            return redirect(reverse("firmy:processing"))
+        paginator = Paginator(qs, 50)
+        page_obj = paginator.page(1)
+        chat_open = True
+    else:
+        paginator = Paginator(qs, 50)
+        page_obj = paginator.get_page(page_num)
+
+        selected_item = None
+        selected_item_id = request.GET.get("item")
+        chat_open = bool(selected_item_id and str(selected_item_id).isdigit())
+        if selected_item_id and str(selected_item_id).isdigit():
+            selected_item = qs.filter(pk=int(selected_item_id)).first()
+        if not selected_item and page_obj.object_list:
+            selected_item = page_obj.object_list[0]
 
     conversation = []
     selected_response_type = []
@@ -1131,6 +1275,8 @@ def processing(request):
             conversation = []
         selected_response_type = _safe_json_list(selected_item.response_type)
         selected_communication_style = _safe_json_list(selected_item.communication_style)
+        if client_mode:
+            conversation = _conversation_visible_to_client(conversation)
 
     return render(
         request,
@@ -1145,6 +1291,7 @@ def processing(request):
             "processing_enabled": interviewer.processing_enabled,
             "evaluator": _selected_evaluator_agent(request),
             "chat_open": chat_open,
+            "client_mode": client_mode,
         },
     )
 
@@ -1527,7 +1674,7 @@ def _generate_agent_message_for_item(item: FirmyProcessingItem, interviewer: Fir
     return _apply_fixed_greeting_and_signoff(_safe_core_or_fallback(core), interviewer)
 
 
-def _run_auto_reply_task(item_id: int, interviewer_id: int, auto_send: bool = False) -> None:
+def _run_auto_reply_task(item_id: int, interviewer_id: int, auto_send: Optional[bool] = None) -> None:
     from django.db import close_old_connections
 
     close_old_connections()
@@ -1558,6 +1705,8 @@ def _run_auto_reply_task(item_id: int, interviewer_id: int, auto_send: bool = Fa
             return
         item = FirmyProcessingItem.objects.select_related("assigned_agent", "premise").get(pk=item_id)
         interviewer = item.assigned_agent
+        if auto_send is None:
+            auto_send = bool(item.auto_reply_send_immediate)
         if not interviewer or not _is_item_running(item, interviewer):
             FirmyProcessingItem.objects.filter(pk=item_id).update(
                 reply_status=FirmyProcessingItem.REPLY_IDLE,
@@ -1612,6 +1761,7 @@ def _run_auto_reply_task(item_id: int, interviewer_id: int, auto_send: bool = Fa
                     "agent_name": interviewer.name,
                     "text": reply.strip(),
                     "summary": reply_summary or reply.strip(),
+                    "released": True,
                 }
             )
         if auto_send:
@@ -1729,6 +1879,7 @@ def _run_generation_task(item_id: int, interviewer_id: int, make_draft: bool = T
                         "agent_name": interviewer.name,
                         "text": msg,
                         "summary": _summarize_message_for_agent(msg, interviewer, "out") or msg,
+                        "released": True,
                     }
                 )
             item.conversation_json = json.dumps(convo, ensure_ascii=False)
@@ -1795,19 +1946,36 @@ def processing_generate_start(request):
     if not item:
         return JsonResponse({"ok": False, "error": "not_found"}, status=404)
 
-    # If already running — don't start another.
+    # If already running — avoid duplicates, allow explicit restart.
+    now = timezone.now()
+    force_restart = (request.POST.get("force_restart") or "").strip().lower() in ("1", "true", "yes", "on")
     if item.gen_status == FirmyProcessingItem.GEN_RUNNING:
-        return JsonResponse({"ok": True, "status": item.gen_status})
+        started = item.gen_started_at
+        age_sec = (now - started).total_seconds() if started else None
+        fresh_running = (age_sec is None) or (age_sec < 600)
+        # Default behavior: keep single running generation.
+        if (not force_restart) and fresh_running:
+            return JsonResponse({"ok": True, "status": item.gen_status})
+        # Explicit restart: debounce double-clicks in a very short window.
+        if force_restart and (age_sec is not None) and age_sec < 2:
+            return JsonResponse({"ok": True, "status": item.gen_status})
 
     FirmyProcessingItem.objects.filter(pk=item_id).update(
         gen_status=FirmyProcessingItem.GEN_RUNNING,
         gen_error="",
-        gen_started_at=timezone.now(),
+        gen_started_at=now,
         gen_finished_at=None,
     )
 
     role_mode = (request.POST.get("role_mode") or "agent").strip().lower()
-    make_draft = role_mode != "firm"
+    imm_raw = request.POST.get("auto_reply_send_immediate")
+    if imm_raw is not None:
+        item.auto_reply_send_immediate = str(imm_raw).strip().lower() in ("1", "true", "yes", "on")
+        item.save(update_fields=["auto_reply_send_immediate", "updated_at"])
+    if role_mode == "firm":
+        make_draft = False
+    else:
+        make_draft = not bool(item.auto_reply_send_immediate)
     t = threading.Thread(target=_run_generation_task, args=(item_id, interviewer.id, make_draft), daemon=True)
     t.start()
 
@@ -1874,16 +2042,26 @@ def processing_reply_status(request):
             item.reply_finished_at = timezone.now()
             item.save(update_fields=["reply_status", "reply_error", "reply_finished_at", "updated_at"])
             status = item.reply_status
+    client_poll = request.GET.get("client") in ("1", "true", "yes", "on")
+    if client_poll:
+        convo = _conversation_visible_to_client(convo)
+        draft_out = ""
+        draft_conf_out = False
+    else:
+        draft_out = item.draft_text or ""
+        draft_conf_out = bool(item.draft_requires_confirmation)
     return JsonResponse(
         {
             "ok": True,
             "status": status,
             "reply_pending": bool(item.reply_started_at and item.reply_finished_at is None),
             "error": item.reply_error,
-            "draft_text": item.draft_text or "",
-            "draft_requires_confirmation": bool(item.draft_requires_confirmation),
+            "draft_text": draft_out,
+            "draft_requires_confirmation": draft_conf_out,
             "conversation": convo,
             "lead_state": item.lead_state or "",
+            "do_not_contact": item.do_not_contact,
+            "paused_individual": item.paused_individual,
             "response_type": _safe_json_list(item.response_type),
             "communication_style": _safe_json_list(item.communication_style),
         }

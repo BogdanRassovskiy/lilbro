@@ -415,6 +415,7 @@ def _append_outgoing_and_resolve(item_id: int, text: str) -> None:
             "agent_name": agent.name if agent else "",
             "text": body,
             "summary": body[:2000],
+            "released": True,
         }
     )
     item.conversation_json = json.dumps(convo, ensure_ascii=False)

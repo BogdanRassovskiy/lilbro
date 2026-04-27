@@ -487,7 +487,6 @@
       <thead>
         <tr>
           <th class="sel"></th>
-          <th>ID</th>
           <th>Название</th>
           <th>Категория</th>
           <th>Адрес</th>
@@ -501,7 +500,6 @@
         {% for p in page_obj.object_list %}
         <tr>
           <td class="sel" data-label=""><input class="row-sel" type="checkbox" name="selected" value="{{ p.id }}"></td>
-          <td data-label="ID">{{ p.premise_id }}</td>
           <td data-label="Название"><a href="{{ p.detail_url }}" rel="noopener noreferrer" target="_blank">{{ p.title }}</a></td>
           <td data-label="Категория">{{ p.category }}</td>
           <td data-label="Адрес">{{ p.address }}</td>
@@ -511,7 +509,7 @@
           <td data-label="Обновлено" style="font-variant-numeric: tabular-nums; color: var(--muted);">{{ p.updated_at|date:"Y-m-d H:i" }}</td>
         </tr>
         {% empty %}
-        <tr class="empty-row"><td colspan="9" style="color: var(--muted);">Ничего не найдено по текущим фильтрам.</td></tr>
+        <tr class="empty-row"><td colspan="8" style="color: var(--muted);">Ничего не найдено по текущим фильтрам.</td></tr>
         {% endfor %}
       </tbody>
       </table>

@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Результаты — {{ run.query }}</title>
   <style>
     :root {
@@ -14,6 +14,7 @@
       --accent: #5b8def;
       --err: #e06c6c;
     }
+    *, *::before, *::after { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
@@ -21,23 +22,36 @@
       background: var(--bg);
       color: var(--text);
       padding: 1.5rem;
+      padding-left: max(1.5rem, env(safe-area-inset-left));
+      padding-right: max(1.5rem, env(safe-area-inset-right));
+      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+      -webkit-text-size-adjust: 100%;
     }
-    a { color: var(--accent); }
+    a { color: var(--accent); word-break: break-word; }
+    .wrap { max-width: 72rem; margin: 0 auto; }
+    .back {
+      display: inline-block;
+      margin-bottom: 1rem;
+      padding: 0.45rem 0;
+      touch-action: manipulation;
+    }
     .meta {
-      max-width: 56rem;
-      margin: 0 auto 1.25rem;
+      margin: 0 0 1.25rem;
       padding: 1rem 1.25rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
     }
     .meta.error { border-color: var(--err); }
-    table {
+    .meta strong { display: inline-block; min-width: 5.5rem; color: var(--muted); font-weight: 600; }
+    .meta-url { word-break: break-all; font-size: 0.82rem; }
+    .results-table {
       width: 100%;
-      max-width: 56rem;
-      margin: 0 auto;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -52,59 +66,138 @@
     th {
       color: var(--muted);
       font-weight: 600;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
     tr:last-child td { border-bottom: none; }
-    .back { display: inline-block; margin-bottom: 1rem; }
-    .multiline { white-space: pre-line; max-width: 14rem; word-break: break-word; font-size: 0.82rem; }
+    .multiline {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      font-size: 0.82rem;
+      max-width: 14rem;
+    }
+    .desc-cell {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      max-width: 28rem;
+      max-height: 14rem;
+      overflow: auto;
+      color: #cbd4e8;
+    }
+    .empty-results { color: var(--muted); padding: 0.5rem 0; }
+
+    @media (max-width: 960px) {
+      .results-table {
+        display: block;
+        border-radius: 12px;
+        overflow: visible;
+        background: transparent;
+        border: none;
+      }
+      .results-table thead { display: none; }
+      .results-table tbody { display: block; }
+      .results-table tr {
+        display: block;
+        margin-bottom: 0.85rem;
+        padding: 0.85rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .results-table td {
+        display: grid;
+        grid-template-columns: minmax(6.5rem, 32%) 1fr;
+        gap: 0.25rem 0.65rem;
+        align-items: start;
+        padding: 0.45rem 0;
+        border: none;
+        border-bottom: 1px solid rgba(42, 51, 68, 0.65);
+        font-size: 0.88rem;
+      }
+      .results-table tr td:last-child { border-bottom: none; }
+      .results-table td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding-top: 0.15rem;
+      }
+      .multiline, .desc-cell {
+        max-width: none;
+        max-height: none;
+      }
+      .desc-cell {
+        max-height: 16rem;
+      }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 0.85rem 0.75rem calc(1rem + env(safe-area-inset-bottom)); }
+      .meta { padding: 0.85rem 1rem; font-size: 0.85rem; }
+      .meta strong { display: block; margin-bottom: 0.15rem; }
+      .results-table td {
+        grid-template-columns: 1fr;
+        gap: 0.2rem;
+      }
+      .results-table td::before { padding-top: 0.35rem; }
+    }
   </style>
 </head>
 <body>
-  <a class="back" href="/">← На главную</a>
+  <div class="wrap">
+    <a class="back" href="/">← На главную</a>
 
-  <div class="meta {% if run.status == 'error' %}error{% endif %}">
-    <strong>Запрос:</strong> {{ run.query }}<br>
-    <strong>Лимит:</strong> до {{ run.expected_limit }} ·
-    <strong>Статус:</strong> {{ run.get_status_display }}<br>
-    <strong>URL на firmy.cz:</strong> <a href="{{ run.search_url }}" rel="noopener noreferrer" target="_blank">{{ run.search_url }}</a><br>
-    {% if run.error_message %}
-      <strong>Ошибка:</strong> {{ run.error_message }}
+    <div class="meta {% if run.status == 'error' %}error{% endif %}">
+      <div><strong>Запрос:</strong> {{ run.query }}</div>
+      <div><strong>Лимит:</strong> до {{ run.expected_limit }} · <strong>Статус:</strong> {{ run.get_status_display }}</div>
+      <div style="margin-top:0.35rem;">
+        <strong>URL на firmy.cz:</strong><br>
+        <a class="meta-url" href="{{ run.search_url }}" rel="noopener noreferrer" target="_blank">{{ run.search_url }}</a>
+      </div>
+      {% if run.error_message %}
+        <div style="margin-top:0.75rem;"><strong>Ошибка:</strong> {{ run.error_message }}</div>
+      {% endif %}
+    </div>
+
+    {% if results %}
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Название</th>
+          <th>Категория</th>
+          <th>Адрес</th>
+          <th>Описание</th>
+          <th>Телефоны</th>
+          <th>E-mail</th>
+          <th>Сайт</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td data-label="#">{{ r.position }}</td>
+          <td data-label="Название"><a href="{{ r.premise.detail_url }}" rel="noopener noreferrer" target="_blank">{{ r.premise.title }}</a></td>
+          <td data-label="Категория">{{ r.premise.category }}</td>
+          <td data-label="Адрес">{{ r.premise.address }}</td>
+          <td class="desc-cell" data-label="Описание">{% if r.premise.card_text %}{{ r.premise.card_text }}{% else %}—{% endif %}</td>
+          <td class="multiline" data-label="Телефоны">{{ r.premise.phones }}</td>
+          <td class="multiline" data-label="E-mail">{{ r.premise.emails }}</td>
+          <td class="multiline" data-label="Сайт">{% if r.premise.website_url %}<a href="{{ r.premise.website_url }}" rel="noopener noreferrer" target="_blank">{{ r.premise.website_url }}</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% elif run.status == 'ok' %}
+    <p class="empty-results">Записей нет (пустая выдача).</p>
     {% endif %}
   </div>
-
-  {% if results %}
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>ID</th>
-        <th>Название</th>
-        <th>Категория</th>
-        <th>Адрес</th>
-        <th>Телефоны</th>
-        <th>E-mail</th>
-        <th>Сайт</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in results %}
-      <tr>
-        <td>{{ r.position }}</td>
-        <td>{{ r.premise.premise_id }}</td>
-        <td><a href="{{ r.premise.detail_url }}" rel="noopener noreferrer" target="_blank">{{ r.premise.title }}</a></td>
-        <td>{{ r.premise.category }}</td>
-        <td>{{ r.premise.address }}</td>
-        <td class="multiline">{{ r.premise.phones }}</td>
-        <td class="multiline">{{ r.premise.emails }}</td>
-        <td class="multiline">{% if r.premise.website_url %}<a href="{{ r.premise.website_url }}" rel="noopener noreferrer" target="_blank">{{ r.premise.website_url }}</a>{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% elif run.status == 'ok' %}
-  <p>Записей нет (пустая выдача).</p>
-  {% endif %}
 </body>
 </html>

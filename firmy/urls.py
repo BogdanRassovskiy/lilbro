@@ -9,6 +9,7 @@ urlpatterns = [
     path("runs/<int:run_id>/", views.results, name="results"),
     path("premises/", views.premises, name="premises"),
     path("processing/", views.processing, name="processing"),
+    path("processing/client/<int:client_item_id>/", views.processing, name="processing_client"),
     path("processing/generate/start/", views.processing_generate_start, name="processing_generate_start"),
     path("processing/generate/status/", views.processing_generate_status, name="processing_generate_status"),
     path("processing/reply/status/", views.processing_reply_status, name="processing_reply_status"),

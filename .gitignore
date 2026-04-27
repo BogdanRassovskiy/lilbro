@@ -9,5 +9,7 @@ __pycache__/
 db.sqlite3
 .DS_Store
 .telegram_bridge_state.json
+.telegram_bridge_bot.pid
+telegram_bridge_bot.log
 .ai_sales_memory/
 parser_dumps/

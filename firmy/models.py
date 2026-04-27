@@ -176,6 +176,11 @@ class FirmyProcessingItem(models.Model):
     reply_delay_min_minutes = models.PositiveSmallIntegerField("минимальная задержка ответа (мин)", default=0)
     reply_delay_max_minutes = models.PositiveSmallIntegerField("максимальная задержка ответа (мин)", default=0)
     paused_individual = models.BooleanField("чат на паузе индивидуально", default=False)
+    auto_reply_send_immediate = models.BooleanField(
+        "автоответ сразу в чат (без черновика)",
+        default=False,
+        help_text="Если да — при входящих и фоновом автоответе текст сразу в переписке; если нет — черновик с подтверждением.",
+    )
     do_not_contact = models.BooleanField("больше не писать", default=False)
     draft_text = models.TextField("черновик сообщения", blank=True, default="")
     draft_requires_confirmation = models.BooleanField("черновик требует подтверждения", default=False)

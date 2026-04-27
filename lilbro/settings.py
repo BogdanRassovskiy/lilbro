@@ -103,6 +103,9 @@ DATABASES = {
     }
 }
 
+# Same as django.contrib.sessions.backends.db, but decode survives corrupted session_data.
+SESSION_ENGINE = 'lilbro.session_backend'
+
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators

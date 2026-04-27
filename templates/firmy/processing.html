@@ -311,6 +311,97 @@
       font-size: 0.74rem;
       padding: 0.24rem 0.46rem;
     }
+    .pending-msg-host {
+      position: relative;
+      width: fit-content;
+      max-width: 100%;
+      align-self: flex-end;
+    }
+    .chat-history.flipped .pending-msg-host {
+      align-self: flex-start;
+    }
+    .pending-wrap.pending-regenerating .pending-draft-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      border-radius: 10px;
+      background: rgba(8, 10, 16, 0.62);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+    .pending-spinner-ring {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 3px solid rgba(180, 198, 235, 0.22);
+      border-top-color: rgba(124, 168, 255, 0.95);
+      animation: pending-spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pending-spin {
+      to { transform: rotate(360deg); }
+    }
+    .pending-wrap.pending-regenerating .pending-actions {
+      opacity: 0.38;
+      pointer-events: none;
+      filter: grayscale(0.35);
+      transition: opacity 0.15s ease;
+    }
+    .gen-mode-toolbar {
+      margin-top: 0.45rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .gen-mode-label { flex-shrink: 0; }
+    .segmented {
+      display: inline-flex;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: #141a22;
+    }
+    .seg-option {
+      position: relative;
+      display: flex;
+      align-items: center;
+      margin: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .seg-option input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+      cursor: pointer;
+    }
+    .seg-option span {
+      display: block;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s;
+    }
+    .seg-option input:checked + span {
+      background: #2a3550;
+      color: var(--text);
+    }
+    .seg-option input:focus-visible + span {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
     .typing-dot {
       display: inline-block;
       width: 8px;
@@ -355,6 +446,61 @@
       display: flex;
       gap: 0.35rem;
       align-items: center;
+    }
+    .lost-toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+      margin: 0;
+    }
+    .lost-toggle input {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+    .lost-toggle-ui {
+      width: 2.65rem;
+      height: 1.4rem;
+      border-radius: 999px;
+      background: #223044;
+      border: 1px solid var(--border);
+      box-sizing: border-box;
+      flex-shrink: 0;
+      position: relative;
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .lost-toggle-ui::after {
+      content: "";
+      position: absolute;
+      width: 1.05rem;
+      height: 1.05rem;
+      border-radius: 50%;
+      background: #b8c4dc;
+      top: 50%;
+      left: 0.16rem;
+      transform: translateY(-50%);
+      transition: transform 0.18s ease, background 0.15s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+    .lost-toggle input:checked + .lost-toggle-ui {
+      background: rgba(183, 79, 79, 0.28);
+      border-color: rgba(183, 79, 79, 0.95);
+      box-shadow: inset 0 0 0 1px rgba(183, 79, 79, 0.25);
+    }
+    .lost-toggle input:checked + .lost-toggle-ui::after {
+      transform: translate(1.22rem, -50%);
+      background: #f0a8a8;
+    }
+    .lost-toggle input:focus-visible + .lost-toggle-ui {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
     .meta {
       display: flex;
@@ -464,6 +610,9 @@
       box-shadow: 0 0 0 2px rgba(91,141,239,0.25);
       cursor: pointer;
     }
+    body.client-mode .layout {
+      grid-template-columns: 1fr;
+    }
     @media (max-width: 900px) {
       .layout { grid-template-columns: 1fr; min-height: auto; }
       body {
@@ -520,12 +669,12 @@
     }
   </style>
 </head>
-<body>
-  <div class="wrap">
+<body class="{% if client_mode %}client-mode{% endif %}">
+  <div class="wrap" data-processing-enabled="{{ processing_enabled|yesno:'1,0' }}">
     <div class="topbar">
       <div class="topbar-left">
-        <a class="btn" href="/" data-i18n="processing.toBase">← Base</a>
-        <div class="topbar-title"><span data-i18n="processing.inProcessing">In processing</span> · {{ interviewer.avatar|default:"👤" }} {{ interviewer.name }}</div>
+        {% if not client_mode %}<a class="btn" href="/" data-i18n="processing.toBase">← Base</a>{% endif %}
+        <div class="topbar-title">{% if client_mode %}<span data-i18n="processing.clientReplyTitle">Клиент</span> · {% endif %}<span data-i18n="processing.inProcessing">In processing</span> · {{ interviewer.avatar|default:"👤" }} {{ interviewer.name }}</div>
       </div>
       <div class="topbar-actions">
         <div class="lang-wrap">
@@ -535,6 +684,7 @@
           <option value="cs" data-i18n="lang.cs">Čeština</option>
         </select>
         </div>
+        {% if not client_mode %}
         <form method="post" action="">
           {% csrf_token %}
           <input type="hidden" name="form_type" value="toggle_global">
@@ -544,6 +694,7 @@
           </button>
         </form>
         <a class="btn" href="/search/" data-i18n="processing.search">Search</a>
+        {% endif %}
       </div>
     </div>
 
@@ -555,7 +706,8 @@
       </ul>
     {% endif %}
 
-    <div class="layout" data-mobile-view="{% if chat_open %}chat{% else %}list{% endif %}">
+    <div class="layout" data-mobile-view="{% if client_mode or chat_open %}chat{% else %}list{% endif %}">
+      {% if not client_mode %}
       <div class="panel panel-list">
         <div class="panel-head"><span data-i18n="processing.chatList">Chat list</span> ({{ page_obj.paginator.count }})</div>
         <div class="chat-list">
@@ -572,13 +724,13 @@
               </div>
               <a class="chat-link" href="?page={{ page_obj.number }}&item={{ it.id }}">
                 <div class="chat-title">{{ it.premise.title }}</div>
-                <div class="chat-meta">ID {{ it.premise.premise_id }} · {{ it.queued_at|date:"Y-m-d H:i" }}</div>
+                <div class="chat-meta">{{ it.queued_at|date:"Y-m-d H:i" }}</div>
                 <div class="chat-badges">
                   <span class="state-icon">{% if processing_enabled and not it.paused_individual %}▶{% else %}⏸{% endif %}</span>
                   <span class="badge"><span data-i18n="processing.badgeLead">lead</span>: {{ it.lead_state|default:"—" }}</span>
                   {% if it.was_contacted %}<span class="badge"><span data-i18n="processing.badgeContact">contact</span>: <span data-i18n="common.yes">yes</span></span>{% else %}<span class="badge"><span data-i18n="processing.badgeContact">contact</span>: <span data-i18n="common.no">no</span></span>{% endif %}
                   {% if it.was_answered %}<span class="badge"><span data-i18n="processing.badgeAnswer">answer</span>: <span data-i18n="common.yes">yes</span></span>{% else %}<span class="badge"><span data-i18n="processing.badgeAnswer">answer</span>: <span data-i18n="common.no">no</span></span>{% endif %}
-                  {% if it.do_not_contact %}<span class="badge" data-i18n="processing.badgeDoNotWrite">do not write</span>{% endif %}
+                  {% if it.do_not_contact %}<span class="badge badge-dnc" data-i18n="processing.badgeDoNotWrite">do not write</span>{% endif %}
                 </div>
               </a>
             </div>
@@ -587,16 +739,18 @@
           {% endfor %}
         </div>
       </div>
+      {% endif %}
 
       <div class="panel panel-chat">
         {% if selected_item %}
         <div class="chat-window">
           <div class="chat-header">
+            {% if not client_mode %}
             <a class="btn secondary mobile-only" href="?page={{ page_obj.number }}" data-i18n="processing.backToChats">← Chats</a>
+            {% endif %}
             <div style="font-weight:700; margin-bottom:0.25rem;">{{ selected_item.premise.title }}</div>
             <div style="color:var(--muted); font-size:0.85rem;">
               <a href="{{ selected_item.premise.detail_url }}" target="_blank" rel="noopener noreferrer" data-i18n="processing.openCard">Open card</a>
-              · ID {{ selected_item.premise.premise_id }}
             </div>
             <div class="chat-badges" style="margin-top:0.45rem;">
               <span id="lead-state-badge" class="badge">lead_state: {{ selected_item.lead_state|default:"—" }}</span>
@@ -636,16 +790,22 @@
               <div style="color:var(--muted);" data-i18n="processing.conversationEmpty">Conversation is empty.</div>
             {% endfor %}
           </div>
-          <div class="chat-form" data-item-id="{{ selected_item.id }}" data-gen-status="{{ selected_item.gen_status }}" data-eval-status="{{ selected_item.eval_status }}" data-eval-stage="{{ selected_item.eval_stage|default:'' }}" data-draft-text="{{ selected_item.draft_text|urlencode }}" data-draft-confirm="{{ selected_item.draft_requires_confirmation|yesno:'1,0' }}">
+          <div class="chat-form" data-item-id="{{ selected_item.id }}" data-gen-status="{{ selected_item.gen_status }}" data-eval-status="{{ selected_item.eval_status }}" data-eval-stage="{{ selected_item.eval_stage|default:'' }}" data-draft-text="{{ selected_item.draft_text|urlencode }}" data-draft-confirm="{{ selected_item.draft_requires_confirmation|yesno:'1,0' }}" data-auto-reply-immediate="{{ selected_item.auto_reply_send_immediate|yesno:'1,0' }}">
           <form id="chat-form" method="post" action="">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="chat">
             <input type="hidden" name="item_id" value="{{ selected_item.id }}">
             <input type="hidden" name="page" value="{{ page_obj.number }}">
-            <input id="message-side" type="hidden" name="message_side" value="out">
-            <div class="checks">
-              <label><input id="do-not-contact" type="checkbox" name="do_not_contact" value="1"{% if selected_item.do_not_contact %} checked{% endif %}> <span data-i18n="processing.doNotWrite">do not contact</span></label>
+            <input id="message-side" type="hidden" name="message_side" value="{% if client_mode %}in{% else %}out{% endif %}">
+            {% if not client_mode %}
+            <div class="checks lost-toggle-wrap">
+              <label class="lost-toggle">
+                <input id="lead-lost-toggle" type="checkbox" autocomplete="off"{% if selected_item.lead_state == 'lost' %} checked{% endif %}>
+                <span class="lost-toggle-ui" aria-hidden="true"></span>
+                <span data-i18n="processing.leadLostToggle">Lost</span>
+              </label>
             </div>
+            {% endif %}
             <textarea id="message-text" name="message_text" placeholder="Message text"></textarea>
             <div class="delay-wrap">
               <span data-i18n="processing.replyTimer">Reply timer:</span>
@@ -657,24 +817,53 @@
             </div>
             <div id="reply-indicator" class="reply-indicator"></div>
             <div id="eval-indicator" class="eval-indicator"></div>
+            {% if not client_mode %}
+            <div class="gen-mode-toolbar" role="group" aria-labelledby="gen-mode-toolbar-label">
+              <span class="gen-mode-label" id="gen-mode-toolbar-label" data-i18n="processing.genModeLabel">Auto-reply &amp; generate:</span>
+              <span class="segmented">
+                <label class="seg-option">
+                  <input type="radio" name="gen-confirm-mode" value="direct" id="gen-mode-direct"{% if selected_item.auto_reply_send_immediate %} checked{% endif %}>
+                  <span data-i18n="processing.genModeDirect">Send to chat immediately</span>
+                </label>
+                <label class="seg-option">
+                  <input type="radio" name="gen-confirm-mode" value="confirm" id="gen-mode-confirm"{% if not selected_item.auto_reply_send_immediate %} checked{% endif %}>
+                  <span data-i18n="processing.genModeConfirm">Draft</span>
+                </label>
+              </span>
+            </div>
+            {% endif %}
             <div style="margin-top:0.35rem; display:flex; justify-content:flex-end; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+              {% if not client_mode %}
               <button class="btn secondary" type="submit" form="toggle-item-form">
                 {% if selected_item.paused_individual %}<span data-i18n="processing.resume">▶ Resume</span>{% else %}<span data-i18n="processing.pause">⏸ Pause</span>{% endif %}
               </button>
+              {% endif %}
+              {% if not client_mode %}
               <button class="btn secondary" type="submit" form="clear-chat-form" data-i18n="processing.clearChat">Clear chat</button>
-              <button id="swap-role-btn" class="btn secondary" type="button" data-i18n="processing.switchRole">Switch role</button>
+              {% endif %}
+              {% if not client_mode and selected_item %}
+              <a class="btn secondary" href="{% url 'firmy:processing_client' selected_item.id %}" target="_blank" rel="noopener noreferrer" data-i18n="processing.openClientTab">Client reply</a>
+              {% endif %}
+              {% if not client_mode %}
               <button id="eval-btn" class="btn" type="button" data-i18n="processing.evaluate"{% if not evaluator %} disabled data-i18n-title="processing.needEvaluator" title="Need evaluator selected"{% elif not selected_item.premise.website_url %} disabled data-i18n-title="processing.noWebsite" title="Company has no website"{% endif %}>Evaluate</button>
               <button id="eval-view-btn" class="btn secondary" type="button" style="{% if not selected_item.evaluation_text %}display:none;{% endif %}" data-i18n="processing.evalView">Evaluation</button>
+              {% endif %}
               <button class="btn" type="submit" data-i18n="processing.send">Send</button>
+              {% if not client_mode %}
               <button id="gen-btn" class="btn" type="button" data-i18n="processing.generate">Generate</button>
+              {% else %}
+              <button id="gen-btn" type="button" style="display:none;" aria-hidden="true" tabindex="-1"></button>
+              {% endif %}
             </div>
           </form>
+          {% if not client_mode %}
           <form id="toggle-item-form" method="post" action="" style="display:none;">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="toggle_item">
             <input type="hidden" name="item_id" value="{{ selected_item.id }}">
             <input type="hidden" name="page" value="{{ page_obj.number }}">
           </form>
+          {% endif %}
           <form id="timer-form" method="post" action="" style="display:none;">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="set_timer">
@@ -697,6 +886,7 @@
       </div>
     </div>
 
+    {% if not client_mode %}
     <div class="meta">
       <div><span data-i18n="common.page">Page</span> {{ page_obj.number }} <span data-i18n="common.of">of</span> {{ page_obj.paginator.num_pages }}</div>
       <div>
@@ -704,6 +894,7 @@
         {% if page_obj.has_next %}<a class="btn" href="?page={{ page_obj.next_page_number }}{% if selected_item %}&item={{ selected_item.id }}{% endif %}">→</a>{% endif %}
       </div>
     </div>
+    {% endif %}
   </div>
 
   <div id="eval-modal" class="modal" aria-hidden="true">
@@ -774,15 +965,8 @@
 
     (function () {
       var form = document.getElementById("chat-form");
-      var dnc = document.getElementById("do-not-contact");
       var message = document.getElementById("message-text");
       if (!form) return;
-
-      if (dnc) {
-        dnc.addEventListener("change", function () {
-          form.submit();
-        });
-      }
 
       if (message) {
         message.addEventListener("keydown", function (e) {
@@ -795,10 +979,44 @@
     })();
 
     (function () {
+      var CLIENT_MODE = {{ client_mode|yesno:"true,false" }};
+      function autoReplyImmediateFromDom() {
+        var direct = document.getElementById("gen-mode-direct");
+        return !!(direct && direct.checked);
+      }
+      function syncGenConfirmRadiosFromServer() {
+        var v = chatBox ? (chatBox.getAttribute("data-auto-reply-immediate") || "0") : "0";
+        var immediate = v === "1";
+        var d = document.getElementById("gen-mode-direct");
+        var c = document.getElementById("gen-mode-confirm");
+        if (d) d.checked = immediate;
+        if (c) c.checked = !immediate;
+      }
+      function persistAutoReplyMode() {
+        if (CLIENT_MODE || !chatBox || !itemId) return;
+        var immediate = autoReplyImmediateFromDom();
+        chatBox.setAttribute("data-auto-reply-immediate", immediate ? "1" : "0");
+        var fd = new URLSearchParams();
+        fd.append("csrfmiddlewaretoken", getCsrfToken());
+        fd.append("form_type", "set_auto_reply_mode");
+        fd.append("item_id", String(itemId));
+        fd.append("page", "{{ page_obj.number }}");
+        fd.append("auto_reply_send_immediate", immediate ? "1" : "0");
+        fetch("", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "X-CSRFToken": getCsrfToken(),
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json"
+          },
+          body: fd.toString()
+        }).catch(function () { /* silent */ });
+      }
       var genBtn = document.getElementById("gen-btn");
       var evalBtn = document.getElementById("eval-btn");
       var evalViewBtn = document.getElementById("eval-view-btn");
-      var swapRoleBtn = document.getElementById("swap-role-btn");
       var evalModal = document.getElementById("eval-modal");
       var evalCloseBtn = document.getElementById("eval-close-btn");
       var evalTextEl = document.getElementById("eval-text");
@@ -813,7 +1031,8 @@
       var timerMaxField = document.getElementById("timer-max-field");
       var messageSide = document.getElementById("message-side");
       var chatHistory = document.getElementById("chat-history");
-      if (!genBtn || !chatBox) return;
+      if (!chatBox) return;
+      var genBtnLive = genBtn && genBtn.classList.contains("btn");
 
       function openEvalModal() {
         if (!evalModal) return;
@@ -956,8 +1175,37 @@
         renderPendingDraft();
         suppressAutoScrollOnce = false;
       }
+      function removeOptimisticOutgoingPlaceholder() {
+        if (!chatHistory) return;
+        var el = chatHistory.querySelector(".msg-wrap.optimistic-pending-send");
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      }
+      function appendOptimisticOutgoingMessage(text) {
+        if (!chatHistory || !(text || "").trim()) return;
+        var raw = String(text || "");
+        var who = tr("processing.outgoing", "outgoing");
+        var agent = optimisticAgentName ? (" · " + escHtml(optimisticAgentName)) : "";
+        var ts = "";
+        try {
+          ts = new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+        } catch (e1) { ts = ""; }
+        var copyLabel = escAttr(tr("processing.copyMessage", "Copy message"));
+        var copyBtn =
+          '<div class="msg-actions"><button type="button" class="msg-copy-btn" title="' + copyLabel + '" aria-label="' + copyLabel + '">'
+          + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>'
+          + "</button></div>";
+        var wrap = document.createElement("div");
+        wrap.className = "msg-wrap out optimistic-pending-send";
+        wrap.innerHTML =
+          '<div class="msg out"><span class="msg-text">' + escHtml(raw) + "</span></div>"
+          + copyBtn
+          + '<div class="msg-meta">' + who + agent + (ts ? " · " + escHtml(ts) : "") + "</div>";
+        chatHistory.appendChild(wrap);
+        scrollBottom(chatHistory);
+      }
       var typingEl = null;
       function showTyping() {
+        if (CLIENT_MODE) return;
         if (typingEl && !typingEl.isConnected) typingEl = null;
         if (!chatHistory || typingEl) return;
         typingActive = true;
@@ -989,12 +1237,8 @@
         if (typingEl && typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
         typingEl = null;
       }
-      var roleModeKey = "chat_role_mode";
       function roleMode() {
-        try { return sessionStorage.getItem(roleModeKey) || "agent"; } catch (e) { return "agent"; }
-      }
-      function setRoleMode(mode) {
-        try { sessionStorage.setItem(roleModeKey, mode); } catch (e) {}
+        return CLIENT_MODE ? "firm" : "agent";
       }
       function applyRoleMode(mode) {
         var isFirm = mode === "firm";
@@ -1005,27 +1249,33 @@
             : (tr("processing.placeholderAgent", "Message from agent") + " {{ interviewer.name }}");
         }
         if (chatHistory) {
-          chatHistory.classList.toggle("flipped", isFirm);
+          if (CLIENT_MODE) {
+            chatHistory.classList.add("flipped");
+          } else {
+            chatHistory.classList.toggle("flipped", isFirm);
+          }
         }
-        if (genBtn) genBtn.style.display = isFirm ? "none" : "";
+        if (genBtn && genBtnLive) genBtn.style.display = isFirm ? "none" : "";
         if (evalBtn) evalBtn.style.display = isFirm ? "none" : "";
         if (evalViewBtn) {
           var hasEval = (evalViewBtn.dataset.hasEval || "0") === "1";
           evalViewBtn.style.display = (!isFirm && hasEval) ? "" : "none";
         }
-        if (swapRoleBtn) swapRoleBtn.textContent = isFirm ? tr("processing.roleFirm", "Role: company") : tr("processing.roleAgent", "Role: agent");
         renderPendingDraft();
       }
 
       function setGenUiRunning() {
+        if (!genBtnLive || !genBtn) return;
         genBtn.disabled = true;
         genBtn.textContent = tr("processing.generating", "Generating…");
       }
       function setGenUiIdle() {
+        if (!genBtnLive || !genBtn) return;
         genBtn.disabled = false;
         genBtn.textContent = tr("processing.generate", "Generate");
       }
       function setGenUiError() {
+        if (!genBtnLive || !genBtn) return;
         genBtn.disabled = false;
         genBtn.textContent = tr("processing.generate", "Generate");
       }
@@ -1056,13 +1306,19 @@
       var evalStatusUrl = "{% url 'firmy:processing_evaluate_status' %}";
       var evalStartUrl = "{% url 'firmy:processing_evaluate_start' %}";
       var replyStatusUrl = "{% url 'firmy:processing_reply_status' %}";
+      function replyPollQueryString() {
+        var qs = "?item_id=" + encodeURIComponent(itemId);
+        if (CLIENT_MODE) qs += "&client=1";
+        return qs;
+      }
       var pollTimer = null;
       var evalPollTimer = null;
       var replyPollTimer = null;
       var replyIdlePollTimer = null;
       var typingHideTimer = null;
       var typingForceVisibleUntil = 0;
-      var chatSubmitInFlight = false;
+      var pendingDraftSendInFlight = false;
+      var optimisticAgentName = "{{ interviewer.name|default:''|escapejs }}";
       var overrideKey = "draft_override_" + itemId;
       var leadStateBadge = document.getElementById("lead-state-badge");
       var responseTypeBadge = document.getElementById("response-type-badge");
@@ -1074,6 +1330,7 @@
       var pendingOutbox = [];
       var pendingOutboxSeq = 0;
       var outboxSending = false;
+      var manualRegenState = "";
 
       function setOverride(val) {
         try { sessionStorage.setItem(overrideKey, val ? "1" : "0"); } catch (e) {}
@@ -1083,23 +1340,87 @@
       }
       function updateLeadUi(data) {
         if (!data) return;
-        var lead = (data.lead_state || "").trim();
-        var resp = Array.isArray(data.response_type) ? data.response_type : [];
-        var style = Array.isArray(data.communication_style) ? data.communication_style : [];
-        if (leadStateBadge) leadStateBadge.textContent = "lead_state: " + (lead || "—");
-        if (responseTypeBadge) responseTypeBadge.textContent = "response_type: " + (resp.length ? resp.join(", ") : "—");
-        if (styleBadge) styleBadge.textContent = "style: " + (style.length ? style.join(", ") : "—");
-
-        var currentRow = document.querySelector('.chat-row[data-item-id="' + String(itemId) + '"]')
+        var wrapMeta = document.querySelector(".wrap[data-processing-enabled]");
+        var globalOn = wrapMeta && wrapMeta.getAttribute("data-processing-enabled") === "1";
+        var sidebarRow = document.querySelector('.chat-row[data-item-id="' + String(itemId) + '"]')
           || document.querySelector(".chat-row.active");
-        if (currentRow) {
-          currentRow.classList.remove("state-cold", "state-warm", "state-hot", "state-lost");
-          if (lead) currentRow.classList.add("state-" + lead);
-          var leadBadge = currentRow.querySelector(".chat-badges .badge");
-          if (leadBadge) leadBadge.textContent = tr("processing.badgeLead", "lead") + ": " + (lead || "—");
+
+        if (Array.isArray(data.response_type) && responseTypeBadge) {
+          responseTypeBadge.textContent = "response_type: " + (data.response_type.length ? data.response_type.join(", ") : "—");
+        }
+        if (Array.isArray(data.communication_style) && styleBadge) {
+          styleBadge.textContent = "style: " + (data.communication_style.length ? data.communication_style.join(", ") : "—");
+        }
+
+        if ("lead_state" in data) {
+          var lead = String(data.lead_state || "").trim();
+          if (leadStateBadge) leadStateBadge.textContent = "lead_state: " + (lead || "—");
+          if (sidebarRow) {
+            sidebarRow.classList.remove("state-cold", "state-warm", "state-hot", "state-lost");
+            if (lead) sidebarRow.classList.add("state-" + lead);
+            else sidebarRow.classList.add("state-cold");
+            var leadBadge = sidebarRow.querySelector(".chat-badges .badge");
+            if (leadBadge) leadBadge.textContent = tr("processing.badgeLead", "lead") + ": " + (lead || "—");
+          }
+        }
+
+        if ("do_not_contact" in data && sidebarRow) {
+          var dnc = !!data.do_not_contact;
+          var existingDnc = sidebarRow.querySelector(".badge-dnc");
+          if (dnc && !existingDnc) {
+            var badgesWrap = sidebarRow.querySelector(".chat-badges");
+            if (badgesWrap) {
+              var sp = document.createElement("span");
+              sp.className = "badge badge-dnc";
+              sp.setAttribute("data-i18n", "processing.badgeDoNotWrite");
+              sp.textContent = tr("processing.badgeDoNotWrite", "do not write");
+              badgesWrap.appendChild(sp);
+            }
+          } else if (!dnc && existingDnc && existingDnc.parentNode) {
+            existingDnc.parentNode.removeChild(existingDnc);
+          }
+        }
+
+        if ("paused_individual" in data && sidebarRow) {
+          var paused = !!data.paused_individual;
+          var icon = sidebarRow.querySelector(".state-icon");
+          if (icon) icon.textContent = (globalOn && !paused) ? "▶" : "⏸";
         }
       }
+      var pendingDraftGenLoading = false;
+
+      function updatePendingDraftGenUi() {
+        if (CLIENT_MODE || !chatHistory) return;
+        var w = chatHistory.querySelector(".msg-wrap.pending-wrap");
+        var host = w ? w.querySelector(".pending-msg-host") : null;
+        if (!w || !host) return;
+        if (!pendingDraftGenLoading) {
+          w.classList.remove("pending-regenerating");
+          var ov = host.querySelector(".pending-draft-overlay");
+          if (ov) host.removeChild(ov);
+          return;
+        }
+        w.classList.add("pending-regenerating");
+        if (!host.querySelector(".pending-draft-overlay")) {
+          var overlay = document.createElement("div");
+          overlay.className = "pending-draft-overlay";
+          overlay.setAttribute("aria-busy", "true");
+          overlay.innerHTML = '<div class="pending-spinner-ring" aria-hidden="true"></div>';
+          host.insertBefore(overlay, host.firstChild);
+        }
+      }
+
+      function clearPendingDraftGenLoading() {
+        pendingDraftGenLoading = false;
+        updatePendingDraftGenUi();
+      }
+
       function setPendingDraft(text, needsConfirm) {
+        if (CLIENT_MODE) {
+          pendingDraftText = "";
+          pendingDraftNeedsConfirm = false;
+          return;
+        }
         var next = (text || "").trim();
         if (next !== pendingDraftText) suppressAutoScrollOnce = true;
         pendingDraftText = next;
@@ -1107,8 +1428,14 @@
       }
       function renderPendingDraft() {
         if (!chatHistory) return;
+        if (CLIENT_MODE) {
+          var ph = chatHistory.querySelector(".msg-wrap.pending-wrap");
+          if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
+          return;
+        }
         var existing = chatHistory.querySelector(".msg-wrap.pending-wrap");
         if (!pendingDraftText) {
+          clearPendingDraftGenLoading();
           if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
           return;
         }
@@ -1118,16 +1445,16 @@
           chatHistory.appendChild(existing);
         }
         existing.innerHTML =
-          '<div class="msg out pending"><span class="msg-text">' + escHtml(pendingDraftText) + '</span></div>'
-          + '<div class="msg-meta">' + escHtml(tr("processing.readyToSend", "Message ready to send")) + '</div>'
+          '<div class="pending-msg-host">'
+          + '<div class="msg out pending"><span class="msg-text">' + escHtml(pendingDraftText) + '</span></div></div>'
           + (!pendingDraftNeedsConfirm
             ? ""
             : ('<div class="pending-actions">'
-              + '<button type="button" class="btn secondary pending-send">' + escHtml(tr("processing.sendNow", "Send now")) + "</button>"
               + '<button type="button" class="btn secondary pending-regen">' + escHtml(tr("processing.regenerate", "Regenerate")) + "</button>"
+              + '<button type="button" class="btn secondary pending-send">' + escHtml(tr("processing.sendNow", "Send")) + "</button>"
               + '<button type="button" class="btn secondary pending-cancel">' + escHtml(tr("processing.cancel", "Cancel")) + "</button>"
-              + '<button type="button" class="btn secondary pending-copy">' + escHtml(tr("processing.copyText", "Copy text")) + "</button>"
               + "</div>"));
+        updatePendingDraftGenUi();
       }
       function outboxStatusMeta(item) {
         var status = (item && item.status) ? String(item.status) : "queued";
@@ -1238,30 +1565,58 @@
             sendQueuedOutbox();
           });
       }
-      function triggerGeneration() {
-        if (!itemId || !genBtn || genBtn.disabled) return;
+      function triggerGeneration(opts) {
+        opts = opts || {};
+        if (!itemId || !genBtnLive || !genBtn) return;
+        if (!opts.pendingRegen && genBtn.disabled) return;
+        if (opts.pendingRegen) {
+          manualRegenState = "requested";
+          pendingDraftGenLoading = true;
+          updatePendingDraftGenUi();
+        } else if (manualRegenState === "done" || manualRegenState === "error") {
+          manualRegenState = "";
+        }
         // New generation run: allow autofill again unless user edits.
         setOverride(false);
         setGenUiRunning();
-        var fd = new FormData();
-        fd.append("item_id", itemId);
-        fd.append("role_mode", roleMode());
+        var params = new URLSearchParams();
+        params.append("csrfmiddlewaretoken", getCsrfToken());
+        params.append("item_id", String(itemId));
+        params.append("role_mode", CLIENT_MODE ? "firm" : "agent");
+        params.append("auto_reply_send_immediate", autoReplyImmediateFromDom() ? "1" : "0");
+        if (opts.pendingRegen) params.append("force_restart", "1");
         fetch(startUrl, {
           method: "POST",
           credentials: "same-origin",
-          headers: { "X-CSRFToken": getCsrfToken() },
-          body: fd
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "X-CSRFToken": getCsrfToken(),
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: params.toString()
         }).then(function (r) { return r.json(); })
           .then(function (data) {
             if (!data || !data.ok) {
+              if (opts.pendingRegen) manualRegenState = "";
               setGenUiIdle();
+              clearPendingDraftGenLoading();
               alert(tr("alerts.startGenFailed", "Failed to start generation."));
               return;
+            }
+            if (opts.pendingRegen && data.status === "running") {
+              manualRegenState = "running";
+              setReplyIndicator({
+                status: "gen_running",
+                reply_pending: true,
+                error: ""
+              });
             }
             startPolling();
           })
           .catch(function () {
+            if (opts.pendingRegen) manualRegenState = "";
             setGenUiIdle();
+            clearPendingDraftGenLoading();
             alert(tr("alerts.startGenFailed", "Failed to start generation."));
           });
       }
@@ -1276,6 +1631,15 @@
         if (status === "running") {
           text = tr("processing.status.generatingReply", "Status: agent is generating reply...");
           cls += " state-run";
+        } else if (status === "gen_running") {
+          text = tr("processing.status.regeneratingDraft", "Status: regenerating draft...");
+          cls += " state-run";
+        } else if (status === "gen_done") {
+          text = tr("processing.status.regeneratingDone", "Status: regenerate complete");
+          cls += " state-done";
+        } else if (status === "gen_error") {
+          text = tr("processing.status.regeneratingError", "Status: regenerate failed");
+          cls += " state-error";
         } else if (status === "error") {
           if (isEscalate) {
             text = tr("processing.status.awaitingHelp", "Status: waiting for operator help with response");
@@ -1325,13 +1689,18 @@
       }
       function sendPendingDraft() {
         if (!pendingDraftText || !chatForm) return;
-        if (chatSubmitInFlight) return;
-        chatSubmitInFlight = true;
-        var submitBtn = chatForm.querySelector("button[type='submit']");
-        if (submitBtn) submitBtn.disabled = true;
+        if (pendingDraftSendInFlight) return;
+        if (chatHistory && chatHistory.querySelector(".msg-wrap.pending-wrap.pending-regenerating")) return;
+        var savedText = String(pendingDraftText || "").trim();
+        var savedNeedsConfirm = pendingDraftNeedsConfirm;
+        if (!savedText) return;
+        pendingDraftSendInFlight = true;
+        // Keep draft message visible, hide only action buttons while sending.
+        setPendingDraft(savedText, false);
+        renderPendingDraft();
         var fd = new FormData(chatForm);
         fd.set("message_side", "out");
-        fd.set("message_text", pendingDraftText);
+        fd.set("message_text", savedText);
         fetch("", {
           method: "POST",
           credentials: "same-origin",
@@ -1347,12 +1716,18 @@
           })
           .then(function (data) {
             if (!data || !data.ok) {
+              setPendingDraft(savedText, savedNeedsConfirm);
+              renderPendingDraft();
               alert(tr("alerts.sendPendingFailed", "Failed to send message."));
               return;
             }
             setPendingDraft("", false);
             renderPendingDraft();
-            if (Array.isArray(data.conversation)) renderConversation(data.conversation);
+            if (Array.isArray(data.conversation)) {
+              renderConversation(data.conversation);
+            } else {
+              replyPollOnce();
+            }
             updateLeadUi(data);
             setReplyIndicator({
               status: data.reply_status || "",
@@ -1361,11 +1736,12 @@
             });
           })
           .catch(function () {
+            setPendingDraft(savedText, savedNeedsConfirm);
+            renderPendingDraft();
             alert(tr("alerts.sendPendingFailed", "Failed to send message."));
           })
           .finally(function () {
-            chatSubmitInFlight = false;
-            if (submitBtn) submitBtn.disabled = false;
+            pendingDraftSendInFlight = false;
           });
       }
       function clearPendingDraftOnServer() {
@@ -1434,11 +1810,14 @@
           }
           var regenBtn = e.target && e.target.closest ? e.target.closest(".pending-regen") : null;
           if (regenBtn) {
-            triggerGeneration();
+            var pw = regenBtn.closest(".msg-wrap.pending-wrap");
+            if (pw && pw.classList.contains("pending-regenerating")) return;
+            triggerGeneration({ pendingRegen: true });
             return;
           }
           var cancelBtn = e.target && e.target.closest ? e.target.closest(".pending-cancel") : null;
           if (cancelBtn) {
+            if (cancelBtn.closest(".msg-wrap.pending-wrap.pending-regenerating")) return;
             setPendingDraft("", false);
             renderPendingDraft();
             clearPendingDraftOnServer();
@@ -1496,11 +1875,28 @@
             if (!data || !data.ok) return;
             if (data.status === "running") {
               setGenUiRunning();
+              if (manualRegenState === "requested" || manualRegenState === "running") {
+                manualRegenState = "running";
+                setReplyIndicator({
+                  status: "gen_running",
+                  reply_pending: true,
+                  error: ""
+                });
+              }
               return;
             }
             if (data.status === "done") {
+              clearPendingDraftGenLoading();
               setGenUiIdle();
-              if (typeof data.draft_text === "string") {
+              if (manualRegenState === "requested" || manualRegenState === "running") {
+                manualRegenState = "done";
+                setReplyIndicator({
+                  status: "gen_done",
+                  reply_pending: false,
+                  error: ""
+                });
+              }
+              if (!CLIENT_MODE && typeof data.draft_text === "string") {
                 setPendingDraft(data.draft_text, !!data.draft_requires_confirmation);
                 renderPendingDraft();
               }
@@ -1509,8 +1905,16 @@
               return;
             }
             if (data.status === "error") {
+              clearPendingDraftGenLoading();
               setGenUiError();
-              if (data.error && data.error.indexOf("ESCALATE_OWNER:") !== 0) {
+              if (manualRegenState === "requested" || manualRegenState === "running") {
+                manualRegenState = "error";
+                setReplyIndicator({
+                  status: "gen_error",
+                  reply_pending: false,
+                  error: data.error || ""
+                });
+              } else if (data.error && data.error.indexOf("ESCALATE_OWNER:") !== 0) {
                 alert(tr("alerts.genError", "Generation error") + ": " + data.error);
               } else {
                 setReplyIndicator({
@@ -1522,7 +1926,11 @@
               stopPolling();
               return;
             }
+            clearPendingDraftGenLoading();
             setGenUiIdle();
+            if (manualRegenState === "requested" || manualRegenState === "running") {
+              manualRegenState = "";
+            }
             stopPolling();
           })
           .catch(function () { /* silent */ });
@@ -1584,7 +1992,7 @@
       }
       function replyPollOnce() {
         if (!itemId) return;
-        fetch(replyStatusUrl + "?item_id=" + encodeURIComponent(itemId), {
+        fetch(replyStatusUrl + replyPollQueryString(), {
           method: "GET",
           credentials: "same-origin",
           headers: { "Accept": "application/json" }
@@ -1593,8 +2001,29 @@
             if (!data || !data.ok) return;
             if (Array.isArray(data.conversation)) renderConversation(data.conversation);
             updateLeadUi(data);
-            setReplyIndicator(data);
-            if (typeof data.draft_text === "string") {
+            var allowReplyIndicator = !pendingDraftGenLoading;
+            if (manualRegenState === "requested" || manualRegenState === "running") {
+              allowReplyIndicator = false;
+            } else if (manualRegenState === "done") {
+              if (data.status === "running" || data.reply_pending || data.status === "error") {
+                manualRegenState = "";
+              } else {
+                allowReplyIndicator = false;
+              }
+            } else if (manualRegenState === "error") {
+              if (data.status === "running" || data.reply_pending) {
+                manualRegenState = "";
+              } else {
+                allowReplyIndicator = false;
+              }
+            }
+            if (allowReplyIndicator) setReplyIndicator(data);
+            if (
+              !CLIENT_MODE
+              && typeof data.draft_text === "string"
+              && !pendingDraftGenLoading
+              && !pendingDraftSendInFlight
+            ) {
               setPendingDraft(data.draft_text, !!data.draft_requires_confirmation);
               renderPendingDraft();
             }
@@ -1650,13 +2079,72 @@
         startIdleReplyPolling();
       }
 
-      // On load: if generation already running for this chat, keep showing it.
+      if (!CLIENT_MODE && chatForm && itemId) {
+        var lostToggleEl = document.getElementById("lead-lost-toggle");
+        var lostToggleBusy = false;
+        if (lostToggleEl) {
+          lostToggleEl.addEventListener("change", function () {
+            if (lostToggleBusy) return;
+            var wantLost = !!lostToggleEl.checked;
+            var previousChecked = !wantLost;
+            lostToggleBusy = true;
+            updateLeadUi({
+              lead_state: wantLost ? "lost" : "",
+              do_not_contact: wantLost,
+              paused_individual: wantLost
+            });
+            var fd = new FormData();
+            fd.append("form_type", "toggle_lead_lost");
+            fd.append("item_id", String(itemId));
+            var pageInp = chatForm.querySelector('input[name="page"]');
+            fd.append("page", pageInp ? pageInp.value : "1");
+            fd.append("csrfmiddlewaretoken", getCsrfToken());
+            if (wantLost) fd.append("lost", "1");
+            fetch("", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json"
+              },
+              body: fd
+            }).then(function (r) {
+              if (!r.ok) throw new Error("bad_status");
+              return r.json();
+            }).then(function (data) {
+              if (!data || !data.ok) throw new Error("bad_payload");
+              lostToggleEl.checked = String(data.lead_state || "").trim() === "lost";
+              updateLeadUi(data);
+              if (Array.isArray(data.conversation)) renderConversation(data.conversation);
+            }).catch(function () {
+              lostToggleEl.checked = previousChecked;
+              updateLeadUi({
+                lead_state: previousChecked ? "lost" : "",
+                do_not_contact: previousChecked,
+                paused_individual: previousChecked
+              });
+              alert(tr("alerts.leadLostToggleFailed", "Could not update lead status."));
+            }).finally(function () {
+              lostToggleBusy = false;
+            });
+          });
+        }
+      }
+
+      // On load: if generation already running for this chat, keep showing it (agent tab only).
       setPendingDraft(
-        decodeURIComponent(chatBox.getAttribute("data-draft-text") || ""),
-        (chatBox.getAttribute("data-draft-confirm") || "0") === "1"
+        CLIENT_MODE ? "" : decodeURIComponent(chatBox.getAttribute("data-draft-text") || ""),
+        CLIENT_MODE ? false : (chatBox.getAttribute("data-draft-confirm") || "0") === "1"
       );
+      var initialGenStatus = chatBox.getAttribute("data-gen-status");
+      if (!CLIENT_MODE && initialGenStatus === "running") {
+        var dt = decodeURIComponent(chatBox.getAttribute("data-draft-text") || "").trim();
+        var dc = (chatBox.getAttribute("data-draft-confirm") || "0") === "1";
+        if (dt && dc) pendingDraftGenLoading = true;
+      }
       renderPendingDraft();
-      var initialStatus = chatBox.getAttribute("data-gen-status");
+      var initialStatus = initialGenStatus;
       if (initialStatus === "running") startPolling();
       var initialEvalStatus = chatBox.getAttribute("data-eval-status");
       var initialEvalStage = chatBox.getAttribute("data-eval-stage") || "";
@@ -1674,6 +2162,22 @@
         evalViewBtn.dataset.hasEval = evalViewBtn.style.display === "none" ? "0" : "1";
       }
       applyRoleMode(roleMode());
+      syncGenConfirmRadiosFromServer();
+      (function bindGenModeRadios() {
+        var direct = document.getElementById("gen-mode-direct");
+        var confirm = document.getElementById("gen-mode-confirm");
+        function onChange() {
+          persistAutoReplyMode();
+        }
+        if (direct) direct.addEventListener("change", onChange);
+        if (confirm) confirm.addEventListener("change", onChange);
+        var bar = document.querySelector(".gen-mode-toolbar");
+        if (bar) {
+          bar.addEventListener("click", function () {
+            setTimeout(persistAutoReplyMode, 0);
+          });
+        }
+      })();
       if (delayMin && delayMax) {
         updateDelayLabel(delayMin.value, delayMax.value);
         delayMin.addEventListener("input", function () {
@@ -1689,17 +2193,11 @@
           saveTimer(p.min, p.max);
         });
       }
-      if (swapRoleBtn) {
-        swapRoleBtn.addEventListener("click", function () {
-          var next = roleMode() === "firm" ? "agent" : "firm";
-          setRoleMode(next);
-          applyRoleMode(next);
+      if (genBtnLive) {
+        genBtn.addEventListener("click", function () {
+          triggerGeneration();
         });
       }
-
-      genBtn.addEventListener("click", function () {
-        triggerGeneration();
-      });
       if (evalBtn) {
         evalBtn.addEventListener("click", function () {
           if (!itemId || evalBtn.disabled) return;
